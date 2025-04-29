@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "809736660329",
+    "project_id": "busmap-cantho-8d67f",
+    "storage_bucket": "busmap-cantho-8d67f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:809736660329:android:7f3da3ad0cefcbdecf09f8",
+        "android_client_info": {
+          "package_name": "dz.duyphan.busmapcantho"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "809736660329-u4aq49j312s2ogq8hpnnlreruqu5bd1j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "dz.duyphan.busmapcantho",
+            "certificate_hash": "a784dc6ad3710cc63f5b3ca8fde2fceaea26d081"
+          }
+        },
+        {
+          "client_id": "809736660329-s3eqmblsr5pg2u0tf7ava7138sv5vj4j.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyArdU3maxRZPbUJ1ovdrKNxu_pQkzr5Bfc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "809736660329-s3eqmblsr5pg2u0tf7ava7138sv5vj4j.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "809736660329-3rf07tbpikks6d72ci25145rojqodjtl.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "dz.duyphan.frontend"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
