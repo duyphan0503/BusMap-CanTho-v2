@@ -9,6 +9,16 @@
 
 import 'package:flutter/widgets.dart';
 
+class $AssetsAnimationsGen {
+  const $AssetsAnimationsGen();
+
+  /// File path: assets/animations/bus_animation.json
+  String get busAnimation => 'assets/animations/bus_animation.json';
+
+  /// List of all assets
+  List<String> get values => [busAnimation];
+}
+
 class $AssetsImagesGen {
   const $AssetsImagesGen();
 
@@ -16,12 +26,15 @@ class $AssetsImagesGen {
   AssetGenImage get defaultAvatar =>
       const AssetGenImage('assets/images/default_avatar.png');
 
+  /// File path: assets/images/logo.png
+  AssetGenImage get logo => const AssetGenImage('assets/images/logo.png');
+
   /// File path: assets/images/my_location.png
   AssetGenImage get myLocation =>
       const AssetGenImage('assets/images/my_location.png');
 
   /// List of all assets
-  List<AssetGenImage> get values => [defaultAvatar, myLocation];
+  List<AssetGenImage> get values => [defaultAvatar, logo, myLocation];
 }
 
 class $AssetsTranslationsGen {
@@ -40,8 +53,13 @@ class $AssetsTranslationsGen {
 class Assets {
   const Assets._();
 
+  static const String aEnv = '.env';
+  static const $AssetsAnimationsGen animations = $AssetsAnimationsGen();
   static const $AssetsImagesGen images = $AssetsImagesGen();
   static const $AssetsTranslationsGen translations = $AssetsTranslationsGen();
+
+  /// List of all assets
+  static List<String> get values => [aEnv];
 }
 
 class AssetGenImage {

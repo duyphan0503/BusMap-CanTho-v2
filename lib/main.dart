@@ -45,6 +45,7 @@ void main() async {
   final saveLocale = prefs.getString('locale') ?? 'en';
 
   final authDatasource = AuthRemoteDatasource();
+  authDatasource.initAuthListener();
   final authRepository = AuthRepository(authDatasource);
 
   runApp(

@@ -12,6 +12,23 @@ class AuthRemoteDatasource {
   AuthRemoteDatasource([SupabaseClient? client])
     : _client = client ?? Supabase.instance.client;
 
+  void initAuthListener() {
+    _client.auth.onAuthStateChange.listen((data) async {
+      final event = data.event;
+      final user = data.session?.user;
+      if (event == AuthChangeEvent.signedIn && user != null) {
+        await _client.from('users').upsert({
+          'id': user.id,
+          'email': user.email,
+          'full_name': user.userMetadata?['full_name'],
+          'avatar_url': user.userMetadata?['avatar_url'],
+          'role': 'user',
+          'last_sign_in_at': DateTime.now().toIso8601String(),
+        }, onConflict: 'id');
+      }
+    });
+  }
+
   Future<AuthResponse> signInWithEmail(String email, String password) async {
     try {
       final response = await _client.auth.signInWithPassword(
@@ -36,6 +53,7 @@ class AuthRemoteDatasource {
       if (response.user == null) {
         throw Exception('Failed to sign up - no user returned');
       }
+
       return response;
     } on AuthException catch (e) {
       if (e.message.toLowerCase().contains('already registered')) {

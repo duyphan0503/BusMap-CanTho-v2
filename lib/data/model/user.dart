@@ -16,13 +16,4 @@ class AccountUser extends AccountUserEntity {
     avatarUrl: json['avatar_url'] as String?,
     role: json['role'] as String?,
   );
-
-  /*  Map<String, dynamic> toJson() => {
-    'id': id,
-    'email': email,
-    'full_name': fullName,
-    'created_at': createdAt.toIso8601String(),
-    'role': role,
-    'last_login': lastLogin?.toIso8601String(),
-  };*/
 }

@@ -91,5 +91,8 @@
   "alreadyHaveAnAccount": "Already have an account?",
   "login": "Login",
   "register": "Register",
-  "signUpSuccess": "Registration successful!"
+  "signUpSuccess": "Registration successful!",
+  "fullName": "Full Name",
+  "nameRequired": "Name is required",
+  "fullNameMinLength": "Name must be at least 3 characters"
 }

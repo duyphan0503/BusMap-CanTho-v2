@@ -1,3 +1,15 @@
+import 'package:easy_localization/easy_localization.dart';
+
+String? validateFullName(String? value) {
+  if (value == null || value.isEmpty) {
+    return 'nameRequired'.tr();
+  }
+  if (value.length < 3) {
+    return 'fullNameMinLength'.tr();
+  }
+  return null;
+}
+
 String? validateEmail(String? value) {
   if (value == null || value.isEmpty) {
     return 'Please enter your email';

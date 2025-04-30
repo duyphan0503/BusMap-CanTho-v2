@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lottie/lottie.dart';
 
+import '../../gen/assets.gen.dart';
 import '../routes/app_routes.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -49,7 +50,7 @@ class _SplashScreenState extends State<SplashScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             // App logo
-            Lottie.asset('assets/animations/bus_animation.json', width: 200, height: 200),
+            Lottie.asset(Assets.animations.busAnimation, width: 200, height: 200),
             const SizedBox(height: 24),
 
             // App name

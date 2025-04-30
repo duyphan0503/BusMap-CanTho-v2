@@ -73,7 +73,7 @@
   "fetchError": "Failed to fetch data",
   "saveError": "Failed to save stop",
   "nearbyStops": "Trạm gần đây",
-  "yourLocation" : "Vị trí của bạn",
+  "yourLocation": "Vị trí của bạn",
   "forgotPassword": "Quên Mật Khẩu",
   "enterOtp": "Nhập Mã OTP",
   "resetPassword": "Đặt Lại Mật Khẩu",
@@ -91,5 +91,8 @@
   "alreadyHaveAnAccount": "Đã có tài khoản?",
   "login": "Đăng nhập",
   "register": "Đăng ký",
-  "signUpSuccess": "Đăng ký thành công!"
+  "signUpSuccess": "Đăng ký thành công!",
+  "fullName": "Họ và tên",
+  "nameRequired": "Tên là bắt buộc",
+  "fullNameMinLength": "Tên phải có ít nhất 3 ký tự"
 }

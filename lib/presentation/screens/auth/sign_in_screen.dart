@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../gen/assets.gen.dart';
 import '../../cubits/auth/auth_cubit.dart';
 import '../../cubits/auth/auth_state.dart';
 import '../../routes/app_routes.dart';
@@ -37,7 +38,10 @@ class _SignInScreenState extends State<SignInScreen> {
       },
       child: Scaffold(
         appBar: AppBar(
-          title: Text('signIn'.tr()),
+          title: Text(
+            'signIn'.tr(),
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
           actions: const [LanguageSelectorWidget()],
         ),
         body: SafeArea(
@@ -66,25 +70,7 @@ class _SignInScreenState extends State<SignInScreen> {
             height: 100,
             width: 100,
             alignment: Alignment.center,
-            child: Image.asset(
-              'assets/images/logo.png',
-              width: 100,
-              height: 100,
-              errorBuilder:
-                  (context, _, __) => const Icon(
-                    Icons.directions_bus,
-                    size: 80,
-                    color: Colors.blue,
-                  ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'appTitle'.tr(),
-            style: Theme.of(
-              context,
-            ).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
+            child: Image.asset(Assets.images.logo.path, fit: BoxFit.cover),
           ),
           const SizedBox(height: 40),
 
