@@ -2,10 +2,12 @@ import 'dart:io';
 
 import 'package:busmapcantho/configs/env.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../model/user.dart';
 
+@lazySingleton
 class AuthRemoteDatasource {
   final SupabaseClient _client;
 
@@ -44,11 +46,14 @@ class AuthRemoteDatasource {
     }
   }
 
-  Future<AuthResponse> signUpWithEmail(String email, String password) async {
+  Future<AuthResponse> signUpWithEmail(String email, String password, String fullName) async {
     try {
       final response = await _client.auth.signUp(
         email: email,
         password: password,
+        data: {
+          'full_name' : fullName
+        }
       );
       if (response.user == null) {
         throw Exception('Failed to sign up - no user returned');

@@ -1,5 +1,7 @@
-import '../../../data/repositories/auth_repository.dart';
+import 'package:busmapcantho/domain/repositories/auth_repository.dart';
+import 'package:injectable/injectable.dart';
 
+@injectable
 class ResetPasswordWithOtpUseCase {
   final AuthRepository _repo;
 

@@ -6,6 +6,7 @@ import 'package:busmapcantho/domain/usecases/auth/sign_out_usecase.dart';
 import 'package:busmapcantho/domain/usecases/auth/update_display_name_usecase.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../domain/entities/account_user_entity.dart';
@@ -13,6 +14,7 @@ import '../../../domain/usecases/auth/update_profile_image_usecase.dart';
 
 part 'account_state.dart';
 
+@injectable
 class AccountCubit extends Cubit<AccountState> {
   final GetCurrentUserUseCase getCurrentUserUseCase;
   final UpdateDisplayNameUseCase updateDisplayNameUseCase;

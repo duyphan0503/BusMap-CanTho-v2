@@ -132,6 +132,7 @@ class SignUpScreenState extends State<SignUpScreen> {
                         context.read<AuthCubit>().signUp(
                           _emailController.text.trim(),
                           _passwordController.text.trim(),
+                          _nameController.text.trim(),
                         );
                       }
                     },

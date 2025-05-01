@@ -5,7 +5,9 @@ import 'package:busmapcantho/domain/usecases/auth/sign_out_usecase.dart';
 import 'package:busmapcantho/domain/usecases/auth/sign_up_usecase.dart';
 import 'package:busmapcantho/presentation/cubits/auth/auth_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:injectable/injectable.dart';
 
+@injectable
 class AuthCubit extends Cubit<AuthState> {
   final SignUpUseCase _signUpUseCase;
   final SignInUseCase _signInUseCase;
@@ -17,10 +19,10 @@ class AuthCubit extends Cubit<AuthState> {
     this._googleSignInNativeUseCase,
   ) : super(AuthInitial());
 
-  Future<void> signUp(String email, String password) async {
+  Future<void> signUp(String email, String password, String fullName) async {
     emit(AuthLoading());
     try {
-      final response = await _signUpUseCase(email, password);
+      final response = await _signUpUseCase(email, password, fullName);
       if (response.user != null) {
         emit(AuthSuccess('Sign up successful. Please check your email for verification'));
       } else {

@@ -1,5 +1,8 @@
-import '../../../data/repositories/auth_repository.dart';
+import 'package:injectable/injectable.dart';
 
+import '../../repositories/auth_repository.dart';
+
+@injectable
 class VerifyEmailOtpUseCase {
   final AuthRepository _repo;
 
