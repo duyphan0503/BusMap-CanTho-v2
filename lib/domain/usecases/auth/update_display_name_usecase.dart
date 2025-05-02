@@ -1,5 +1,5 @@
-import 'package:busmapcantho/domain/entities/account_user_entity.dart';
 import 'package:injectable/injectable.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../repositories/auth_repository.dart';
 
@@ -9,6 +9,5 @@ class UpdateDisplayNameUseCase {
 
   UpdateDisplayNameUseCase(this._repo);
 
-  Future<AccountUserEntity> call(String fullName) =>
-      _repo.updateDisplayName(fullName);
+  Future<User> call(String fullName) => _repo.updateDisplayName(fullName);
 }

@@ -1,9 +1,9 @@
 class Ticket {
   final String id;
   final String userId;
-  final String routeId;
-  final String fromStopId;
-  final String toStopId;
+  final String? routeId;
+  final String? fromStopId;
+  final String? toStopId;
   final DateTime purchasedAt;
   final String status;
   final double? price;
@@ -11,9 +11,9 @@ class Ticket {
   Ticket({
     required this.id,
     required this.userId,
-    required this.routeId,
-    required this.fromStopId,
-    required this.toStopId,
+    this.routeId,
+    this.fromStopId,
+    this.toStopId,
     required this.purchasedAt,
     required this.status,
     this.price,
@@ -22,12 +22,13 @@ class Ticket {
   factory Ticket.fromJson(Map<String, dynamic> json) => Ticket(
     id: json['id'] as String,
     userId: json['user_id'] as String,
-    routeId: json['route_id'] as String,
-    fromStopId: json['from_stop_id'] as String,
-    toStopId: json['to_stop_id'] as String,
-    purchasedAt: DateTime.parse(json['purchased_at']),
-    status: json['status'] ?? 'unused',
-    price: json['price'] != null ? (json['price'] as num).toDouble() : null,
+    routeId: json['route_id'] as String?,
+    fromStopId: json['from_stop_id'] as String?,
+    toStopId: json['to_stop_id'] as String?,
+    purchasedAt: DateTime.parse(json['purchased_at'] as String),
+    status: json['status'] as String,
+    price:
+    json['price'] != null ? (json['price'] as num).toDouble() : null,
   );
 
   Map<String, dynamic> toJson() => {

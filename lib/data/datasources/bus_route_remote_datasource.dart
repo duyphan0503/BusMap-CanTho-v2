@@ -1,33 +1,54 @@
+import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../model/bus_route.dart';
 
+@lazySingleton
 class BusRouteRemoteDatasource {
   final SupabaseClient _client;
 
   BusRouteRemoteDatasource([SupabaseClient? client])
     : _client = client ?? Supabase.instance.client;
 
-  Future<List<BusRoute>> getAllBusRoutes() async {
-    final response = await _client.from('bus_routes').select();
-    return (response as List).map((e) => BusRoute.fromJson(e)).toList();
+  Future<List<BusRoute>> getBusRoutes() async {
+    try {
+      final response = await _client
+          .from('routes')
+          .select('*, agency:agencies(*)')
+          .order('route_number');
+
+      return response.map((data) => BusRoute.fromJson(data)).toList();
+    } catch (e) {
+      throw Exception('Failed to load bus routes: $e');
+    }
   }
 
-  Future<BusRoute?> getBusRouteById(String id) async {
-    final response =
-        await _client.from('bus_routes').select().eq('id', id).maybeSingle();
-    return response != null ? BusRoute.fromJson(response) : null;
+  Future<BusRoute> getBusRouteById(String id) async {
+    try {
+      final response =
+          await _client
+              .from('routes')
+              .select('*, agency:agencies(*)')
+              .eq('id', id)
+              .single();
+
+      return BusRoute.fromJson(response);
+    } catch (e) {
+      throw Exception('Failed to load bus route: $e');
+    }
   }
 
-  Future<void> addBusRoute(BusRoute route) async {
-    await _client.from('bus_routes').insert(route.toJson());
-  }
+  Future<List<BusRoute>> searchBusRoutes(String query) async {
+    try {
+      final response = await _client
+          .from('routes')
+          .select('*, agency:agencies(*)')
+          .or('route_number.ilike.%$query%,route_name.ilike.%$query%')
+          .order('route_number');
 
-  Future<void> updateBusRoute(BusRoute route) async {
-    await _client.from('bus_routes').update(route.toJson()).eq('id', route.id);
-  }
-
-  Future<void> deleteBusRoute(String id) async {
-    await _client.from('bus_routes').delete().eq('id', id);
+      return response.map((data) => BusRoute.fromJson(data)).toList();
+    } catch (e) {
+      throw Exception('Failed to search bus routes: $e');
+    }
   }
 }

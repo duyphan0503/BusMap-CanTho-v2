@@ -6,5 +6,5 @@ class SendFeedbackUseCase {
   final FeedbackRepository _repo;
   SendFeedbackUseCase(this._repo);
 
-  Future<void> call(Feedback feedback) => _repo.submitFeedback(feedback);
+  Future<void> call(String feedback) => _repo.submitFeedback(feedback);
 }

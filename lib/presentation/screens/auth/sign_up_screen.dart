@@ -108,7 +108,7 @@ class SignUpScreenState extends State<SignUpScreen> {
               const SizedBox(height: 24),
               BlocConsumer<AuthCubit, AuthState>(
                 listener: (context, state) {
-                  if (state is AuthSuccess) {
+                  if (state is AuthAuthenticated) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(content: Text('signUpSuccess'.tr())),
                     );

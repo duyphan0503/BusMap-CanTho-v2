@@ -24,4 +24,10 @@ class AppRoutes {
 
   //Directions
   static const directions = '/directions';
+
+  // Routes screen
+  static const routes = '/routes';
+  
+  // Route detail screen
+  static const routeDetail = '/route';
 }

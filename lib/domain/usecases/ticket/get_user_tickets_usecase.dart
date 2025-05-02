@@ -5,5 +5,5 @@ class GetUserTicketsUseCase {
   final TicketRepository _repo;
   GetUserTicketsUseCase(this._repo);
 
-  Future<List<Ticket>> call(String userId) => _repo.getUserTickets(userId);
+  Future<List<Ticket>> call() => _repo.getUserTickets();
 }

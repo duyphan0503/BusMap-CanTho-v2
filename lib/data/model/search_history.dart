@@ -11,12 +11,13 @@ class SearchHistory {
     required this.searchedAt,
   });
 
-  factory SearchHistory.fromJson(Map<String, dynamic> json) => SearchHistory(
-    id: json['id'] as String,
-    userId: json['user_id'] as String,
-    keyword: json['keyword'] as String,
-    searchedAt: DateTime.parse(json['searched_at']),
-  );
+  factory SearchHistory.fromJson(Map<String, dynamic> json) =>
+      SearchHistory(
+        id: json['id'] as String,
+        userId: json['user_id'] as String,
+        keyword: json['keyword'] as String,
+        searchedAt: DateTime.parse(json['searched_at'] as String),
+      );
 
   Map<String, dynamic> toJson() => {
     'id': id,

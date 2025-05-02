@@ -5,8 +5,6 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../model/user.dart';
-
 @lazySingleton
 class AuthRemoteDatasource {
   final SupabaseClient _client;
@@ -14,22 +12,8 @@ class AuthRemoteDatasource {
   AuthRemoteDatasource([SupabaseClient? client])
     : _client = client ?? Supabase.instance.client;
 
-  void initAuthListener() {
-    _client.auth.onAuthStateChange.listen((data) async {
-      final event = data.event;
-      final user = data.session?.user;
-      if (event == AuthChangeEvent.signedIn && user != null) {
-        await _client.from('users').upsert({
-          'id': user.id,
-          'email': user.email,
-          'full_name': user.userMetadata?['full_name'],
-          'avatar_url': user.userMetadata?['avatar_url'],
-          'role': 'user',
-          'last_sign_in_at': DateTime.now().toIso8601String(),
-        }, onConflict: 'id');
-      }
-    });
-  }
+  // No longer needed as we're using the built-in auth.users table
+  // void initAuthListener() { ... }
 
   Future<AuthResponse> signInWithEmail(String email, String password) async {
     try {
@@ -46,14 +30,16 @@ class AuthRemoteDatasource {
     }
   }
 
-  Future<AuthResponse> signUpWithEmail(String email, String password, String fullName) async {
+  Future<AuthResponse> signUpWithEmail(
+    String email,
+    String password,
+    String fullName,
+  ) async {
     try {
       final response = await _client.auth.signUp(
         email: email,
         password: password,
-        data: {
-          'full_name' : fullName
-        }
+        data: {'full_name': fullName},
       );
       if (response.user == null) {
         throw Exception('Failed to sign up - no user returned');
@@ -99,31 +85,33 @@ class AuthRemoteDatasource {
     await _client.auth.signOut();
   }
 
-  Future<AccountUser?> getCurrentUser() async {
-    final user = _client.auth.currentUser;
-    if (user == null) return null;
-    final userData =
-        await _client.from('users').select().eq('id', user.id).maybeSingle();
-    if (userData == null) return null;
-    return AccountUser.fromJson(userData);
+  Future<User?> getCurrentUser() async {
+    return _client.auth.currentUser;
   }
 
-  Future<AccountUser> updateDisplayName(String fullName) async {
+  Future<User> updateDisplayName(String fullName) async {
     final user = _client.auth.currentUser;
     if (user == null) throw Exception('No user is currently signed in');
-    await _client
-        .from('users')
-        .update({'full_name': fullName})
-        .eq('id', user.id);
-    return (await getCurrentUser())!;
+
+    final response = await _client.auth.updateUser(
+      UserAttributes(data: {'full_name': fullName, ...user.userMetadata ?? {}}),
+    );
+
+    final updatedUser = response.user;
+    if (updatedUser == null) {
+      throw Exception('Failed to update profile image - no user returned');
+    }
+    return updatedUser;
   }
 
-  Future<AccountUser> updateProfileImage(File file) async {
+  Future<User> updateProfileImage(File file) async {
     final user = _client.auth.currentUser;
     if (user == null) throw Exception('No user is currently signed in');
+
     final bytes = await file.readAsBytes();
     final ext = file.path.split('.').last;
     final storagePath = 'avatars/${user.id}.$ext';
+
     await _client.storage
         .from('avatars')
         .updateBinary(
@@ -131,9 +119,18 @@ class AuthRemoteDatasource {
           bytes,
           fileOptions: FileOptions(upsert: true),
         );
+
     final url = _client.storage.from('avatars').getPublicUrl(storagePath);
-    await _client.from('users').update({'avatar_url': url}).eq('id', user.id);
-    return (await getCurrentUser())!;
+
+    final response = await _client.auth.updateUser(
+      UserAttributes(data: {'avatar_url': url, ...user.userMetadata ?? {}}),
+    );
+
+    final updatedUser = response.user;
+    if (updatedUser == null) {
+      throw Exception('Failed to update profile image - no user returned');
+    }
+    return updatedUser;
   }
 
   Future<void> changePassword(String newPassword) async {
@@ -188,26 +185,15 @@ class AuthRemoteDatasource {
     }
   }
 
-  /*Future<void> changePassword({
-    required String email,
-    required String oldPassword,
-    required String newPassword,
-  }) async {
-    try {
-      final response = await _client.auth.signInWithPassword(
-        email: email,
-        password: oldPassword,
-      );
-      if (response.user == null) {
-        throw Exception('Old password is incorrect');
-      }
-
-      await _client.auth.updateUser(UserAttributes(password: newPassword));
-    } on AuthException catch (e) {
-      if (e.code == 'invalid_credentials') {
-        throw Exception('Old password is incorrect');
-      }
-      throw Exception(e.message);
+  Future<String?> getAccessToken() async {
+    final session = _client.auth.currentSession;
+    if (session == null) {
+      return null;
     }
-  }*/
+    if (session.isExpired) {
+      final res = await _client.auth.refreshSession();
+      return res.session?.accessToken;
+    }
+    return session.accessToken;
+  }
 }

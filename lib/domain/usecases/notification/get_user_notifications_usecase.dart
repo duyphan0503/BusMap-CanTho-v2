@@ -6,6 +6,6 @@ class GetUserNotificationsUseCase {
 
   GetUserNotificationsUseCase(this.repo);
 
-  Future<List<AppNotification>> call(String userId) =>
-      repo.getUserNotifications(userId);
+  Future<List<AppNotification>> call() =>
+      repo.getUserNotifications();
 }

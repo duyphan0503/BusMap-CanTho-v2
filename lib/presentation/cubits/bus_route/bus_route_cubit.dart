@@ -1,12 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../../../data/model/bus_route.dart';
-import '../../../../domain/usecases/bus_route/get_all_bus_route_usecase.dart';
+import '../../../../domain/usecases/bus_route/get_all_bus_routes_usecase.dart';
 import '../../../../domain/usecases/bus_route/get_bus_route_by_id_usecase.dart';
 import 'bus_route_state.dart';
 
 class BusRouteCubit extends Cubit<BusRouteState> {
-  final GetAllBusRouteUseCase _getAllBusRoute;
+  final GetAllBusRoutesUseCase _getAllBusRoute;
   final GetBusRouteByIdUseCase _getBusRouteById;
 
   BusRouteCubit(this._getAllBusRoute, this._getBusRouteById)

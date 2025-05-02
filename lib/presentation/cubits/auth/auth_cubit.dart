@@ -3,31 +3,48 @@ import 'package:busmapcantho/domain/usecases/auth/google_sign_in_native_usecase.
 import 'package:busmapcantho/domain/usecases/auth/sign_in_usecase.dart';
 import 'package:busmapcantho/domain/usecases/auth/sign_out_usecase.dart';
 import 'package:busmapcantho/domain/usecases/auth/sign_up_usecase.dart';
-import 'package:busmapcantho/presentation/cubits/auth/auth_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 
+import 'auth_state.dart';
+
 @injectable
 class AuthCubit extends Cubit<AuthState> {
+  final GetCurrentUserUseCase _getCurrentUserUseCase;
   final SignUpUseCase _signUpUseCase;
   final SignInUseCase _signInUseCase;
   final GoogleSignInNativeUseCase _googleSignInNativeUseCase;
+  final SignOutUseCase _signOutUseCase;
 
   AuthCubit(
+    this._getCurrentUserUseCase,
     this._signUpUseCase,
     this._signInUseCase,
     this._googleSignInNativeUseCase,
-  ) : super(AuthInitial());
+    this._signOutUseCase,
+  ) : super(AuthInitial()) {
+    _checkAuth();
+  }
+
+  Future<void> _checkAuth() async {
+    emit(AuthLoading());
+    try {
+      final user = await _getCurrentUserUseCase();
+      if (user != null) {
+        emit(AuthAuthenticated(user));
+      } else {
+        emit(AuthUnauthenticated());
+      }
+    } catch (_) {
+      emit(AuthUnauthenticated());
+    }
+  }
 
   Future<void> signUp(String email, String password, String fullName) async {
     emit(AuthLoading());
     try {
-      final response = await _signUpUseCase(email, password, fullName);
-      if (response.user != null) {
-        emit(AuthSuccess('Sign up successful. Please check your email for verification'));
-      } else {
-        emit(AuthError('Sign up failed'));
-      }
+      await _signUpUseCase(email, password, fullName);
+      emit(AuthUnauthenticated());
     } catch (e) {
       emit(AuthError(e.toString()));
     }
@@ -36,12 +53,8 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> signIn(String email, String password) async {
     emit(AuthLoading());
     try {
-      final response = await _signInUseCase(email, password);
-      if (response.user != null) {
-        emit(AuthSuccess('Sign in successful'));
-      } else {
-        emit(AuthError('Sign in failed'));
-      }
+      await _signInUseCase(email, password);
+      await _checkAuth();
     } catch (e) {
       emit(AuthError(e.toString()));
     }
@@ -50,14 +63,18 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> signInWithGoogle() async {
     emit(AuthLoading());
     try {
-      final response = await _googleSignInNativeUseCase();
-      if (response.user != null) {
-        emit(AuthSuccess('Google sign in successful'));
-      } else {
-        emit(AuthError('Google sign in failed'));
-      }
+      await _googleSignInNativeUseCase();
+      await _checkAuth();
     } catch (e) {
       emit(AuthError(e.toString()));
     }
+  }
+
+  Future<void> signOut() async {
+    emit(AuthLoading());
+    try {
+      await _signOutUseCase();
+    } catch (_) {}
+    emit(AuthUnauthenticated());
   }
 }

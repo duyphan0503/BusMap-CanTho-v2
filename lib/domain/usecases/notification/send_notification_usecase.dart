@@ -6,6 +6,6 @@ class SendNotificationUseCase {
 
   SendNotificationUseCase(this._repo);
 
-  Future<void> call(AppNotification notification) =>
-      _repo.sendNotification(notification);
+  Future<void> call(String userId, String message) =>
+      _repo.sendNotification(userId, message);
 }

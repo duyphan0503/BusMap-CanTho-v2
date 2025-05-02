@@ -16,7 +16,7 @@ class AppNotification {
         id: json['id'] as String,
         userId: json['user_id'] as String,
         message: json['message'] as String,
-        sentAt: DateTime.parse(json['sent_at']),
+        sentAt: DateTime.parse(json['sent_at'] as String),
       );
 
   Map<String, dynamic> toJson() => {

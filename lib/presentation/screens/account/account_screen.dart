@@ -112,13 +112,13 @@ class AccountScreenState extends State<AccountScreen> {
     String? userId;
 
     if (state is AccountLoaded || state is AccountUpdateSuccess) {
-      final user =
-          (state is AccountLoaded)
-              ? state.user
-              : (state as AccountUpdateSuccess).user;
-      displayName = user.fullName;
+      final user = (state is AccountLoaded)
+          ? state.user
+          : (state as AccountUpdateSuccess).user;
+          
+      displayName = user.userMetadata?['full_name'] as String?;
       email = user.email;
-      avatarUrl = user.avatarUrl;
+      avatarUrl = user.userMetadata?['avatar_url'] as String?;
       userId = user.id;
       _nameController.text = displayName ?? '';
     }
@@ -446,3 +446,4 @@ class _HelpSupportScreen extends StatelessWidget {
     );
   }
 }
+

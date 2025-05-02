@@ -1,19 +1,27 @@
-import 'package:busmapcantho/data/model/feedback.dart';
+import 'package:injectable/injectable.dart';
 
 import '../datasources/feedback_remote_datasource.dart';
+import '../model/feedback.dart';
 
+@lazySingleton
 class FeedbackRepository {
   final FeedbackRemoteDatasource _remoteDatasource;
 
-  FeedbackRepository([FeedbackRemoteDatasource? remoteDatasource])
-    : _remoteDatasource = remoteDatasource ?? FeedbackRemoteDatasource();
+  FeedbackRepository(this._remoteDatasource);
 
-  Future<void> submitFeedback(Feedback feedback) {
-    return _remoteDatasource.sendFeedback(feedback);
+  // Submit feedback (current authenticated user)
+  Future<void> submitFeedback(String content) {
+    return _remoteDatasource.submitFeedback(content);
   }
 
-  Future<List<Feedback>> getFeedbacksByUser(String userId) async {
-    final feedback = await _remoteDatasource.getFeedbacksByUser(userId);
-    return feedback != null ? [feedback] : [];
+  // Only for admin users
+  Future<List<FeedbackModel>> getAllFeedback() {
+    return _remoteDatasource.getAllFeedback();
+  }
+  
+  // This method is deprecated as it requires auth now
+  Future<List<FeedbackModel>> getFeedbacksByUser(String userId) async {
+    // Current user ID is automatically used from auth
+    throw UnimplementedError('Use getAllFeedback() with admin role instead');
   }
 }

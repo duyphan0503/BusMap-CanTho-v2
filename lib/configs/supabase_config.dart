@@ -8,10 +8,9 @@ Future<void> initSupabase() async {
     url: baseUrl,
     anonKey: apiKey,
     debug: true,
-    authOptions: FlutterAuthClientOptions(
+    authOptions: const FlutterAuthClientOptions(
       autoRefreshToken: true,
-      localStorage: SecureSessionStorage(),
       authFlowType: AuthFlowType.pkce,
-    ),
+    ).copyWith(localStorage: SecureSessionStorage()),
   );
 }

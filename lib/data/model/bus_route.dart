@@ -1,43 +1,62 @@
+import 'package:busmapcantho/data/model/route_stop.dart';
+
 class BusRoute {
   final String id;
-  final String name;
-  final String? code;
-  final String? color;
-  final DateTime createdAt;
+  final String routeNumber;
+  final String routeName;
   final String? description;
-  final Map<String, dynamic>? schedule; // jsonb
+  final String? operatingHoursDescription;
+  final String? frequencyDescription;
+  final String? fareInfo;
+  final String? routeType;
+  final String? agencyId;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  final List<RouteStop> stops;
 
   BusRoute({
     required this.id,
-    required this.name,
-    this.code,
-    this.color,
-    required this.createdAt,
+    required this.routeNumber,
+    required this.routeName,
     this.description,
-    this.schedule,
+    this.operatingHoursDescription,
+    this.frequencyDescription,
+    this.fareInfo,
+    this.routeType,
+    this.agencyId,
+    required this.createdAt,
+    required this.updatedAt,
+    this.stops = const [],
   });
 
-  factory BusRoute.fromJson(Map<String, dynamic> json) => BusRoute(
-    id: json['id'] as String,
-    name: json['name'] as String,
-    code: json['code'] as String?,
-    color: json['color'] as String?,
-    createdAt: DateTime.parse(json['created_at']),
-    description: json['description'] as String?,
-    schedule: json['schedule'] is Map<String, dynamic>
-        ? json['schedule'] as Map<String, dynamic>
-        : json['schedule'] != null
-        ? Map<String, dynamic>.from(json['schedule'])
-        : null,
-  );
+  factory BusRoute.fromJson(Map<String, dynamic> json, {List<RouteStop>? stops}) {
+    return BusRoute(
+      id: json['id'] as String,
+      routeNumber: json['route_number'] as String,
+      routeName: json['route_name'] as String,
+      description: json['description'] as String?,
+      operatingHoursDescription: json['operating_hours_description'] as String?,
+      frequencyDescription: json['frequency_description'] as String?,
+      fareInfo: json['fare_info'] as String?,
+      routeType: json['route_type'] as String?,
+      agencyId: json['agency_id'] as String?,
+      createdAt: DateTime.parse(json['created_at'] as String),
+      updatedAt: DateTime.parse(json['updated_at'] as String),
+      stops: stops ?? [],
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
-    'name': name,
-    'code': code,
-    'color': color,
-    'created_at': createdAt.toIso8601String(),
+    'route_number': routeNumber,
+    'route_name': routeName,
     'description': description,
-    'schedule': schedule,
+    'operating_hours_description': operatingHoursDescription,
+    'frequency_description': frequencyDescription,
+    'fare_info': fareInfo,
+    'route_type': routeType,
+    'agency_id': agencyId,
+    'created_at': createdAt.toIso8601String(),
+    'updated_at': updatedAt.toIso8601String(),
   };
 }

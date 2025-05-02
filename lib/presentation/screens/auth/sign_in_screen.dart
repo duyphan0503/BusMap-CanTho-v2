@@ -29,9 +29,9 @@ class _SignInScreenState extends State<SignInScreen> {
   Widget build(BuildContext context) {
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
-        if (state is AuthSuccess) {
+        if (state is AuthAuthenticated) {
           context.go(AppRoutes.home);
-          _showSuccessMessage(context, state.message);
+          _showSuccessMessage(context, 'loginSuccess'.tr());
         } else if (state is AuthError) {
           _showErrorMessage(context, state.error);
         }

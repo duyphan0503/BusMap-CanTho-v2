@@ -1,4 +1,5 @@
 import 'package:busmapcantho/presentation/screens/auth/otp_verification_screen.dart';
+import 'package:busmapcantho/presentation/screens/routes/bus_routes_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -8,6 +9,7 @@ import '../screens/auth/sign_in_screen.dart';
 import '../screens/auth/sign_up_screen.dart';
 import '../screens/favorites_screen.dart';
 import '../screens/home/home_screen.dart';
+import '../screens/home/map/map_screen.dart';
 import '../screens/search_screen.dart';
 import '../screens/splash_screen.dart';
 import 'app_routes.dart';
@@ -60,19 +62,19 @@ class AppRouter {
             path: AppRoutes.home,
             builder: (context, state) => const HomeScreen(),
           ),
-          /*          GoRoute(
+          GoRoute(
             path: AppRoutes.map,
             builder: (context, state) => const MapScreen(),
-          ),*/
+          ),
           /*          GoRoute(
             path: AppRoutes.directions,
             builder: (context, state) => const DirectionsScreen(),
           ),*/
-          /*GoRoute(
+          GoRoute(
             path: AppRoutes.busRoutes,
             builder: (context, state) => const BusRoutesScreen(),
           ),
-          GoRoute(
+          /*GoRoute(
             path: AppRoutes.routeDetails,
             builder: (context, state) {
               final routeId = state.pathParameters['routeId']!;

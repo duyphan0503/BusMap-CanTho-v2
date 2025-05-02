@@ -8,8 +8,8 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../domain/entities/account_user_entity.dart';
 import '../../../domain/usecases/auth/update_profile_image_usecase.dart';
 
 part 'account_state.dart';
@@ -69,7 +69,11 @@ class AccountCubit extends Cubit<AccountState> {
     try {
       await changePasswordUseCase(newPassword);
       final user = await getCurrentUserUseCase();
-      emit(AccountUpdateSuccess('Password changed successfully!', user!));
+      if (user != null) {
+        emit(AccountUpdateSuccess('Password changed successfully!', user));
+      } else {
+        emit(AccountError('User not found after password change.'));
+      }
     } catch (e) {
       emit(AccountError('Failed to change password.'));
     }

@@ -1,41 +1,81 @@
+import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../model/bus_stop.dart';
 
+@lazySingleton
 class BusStopRemoteDatasource {
   final SupabaseClient _client;
 
   BusStopRemoteDatasource([SupabaseClient? client])
-    : _client = client ?? Supabase.instance.client;
+      : _client = client ?? Supabase.instance.client;
 
-  Future<List<BusStop>> getAllBusStops() async {
-    final response = await _client.from('bus_stops').select();
-    return (response as List).map((e) => BusStop.fromJson(e)).toList();
+  Future<List<BusStop>> getBusStops() async {
+    try {
+      final response = await _client
+          .from('stops')
+          .select()
+          .order('name');
+
+      if (response is! List) {
+        throw FormatException('Expected a list but got ${response.runtimeType}');
+      }
+
+      return response.map((data) => BusStop.fromJson(data)).toList();
+    } catch (e) {
+      throw Exception('Failed to load bus stops: $e');
+    }
   }
 
-  Future<BusStop?> getBusStopById(String id) async {
-    final response =
-        await _client.from('bus_stops').select().eq('id', id).maybeSingle();
-    return response != null ? BusStop.fromJson(response) : null;
+  Future<BusStop> getBusStopById(String id) async {
+    try {
+      final response = await _client
+          .from('stops')
+          .select()
+          .eq('id', id)
+          .single();
+
+      return BusStop.fromJson(response);
+    } catch (e) {
+      throw Exception('Failed to load bus stop: $e');
+    }
   }
 
-  Future<List<BusStop>> getBusStopsByRouteId(String routeId) async {
-    final response = await _client
-        .from('bus_stops')
-        .select()
-        .eq('route_id', routeId);
-    return (response as List).map((e) => BusStop.fromJson(e)).toList();
+  Future<List<BusStop>> searchBusStops(String query) async {
+    try {
+      final response = await _client
+          .from('stops')
+          .select()
+          .ilike('name', '%$query%')
+          .order('name');
+
+      if (response is! List) {
+        throw FormatException('Expected a list but got ${response.runtimeType}');
+      }
+
+      return response.map((data) => BusStop.fromJson(data)).toList();
+    } catch (e) {
+      throw Exception('Failed to search bus stops: $e');
+    }
   }
 
-  Future<void> addBusStop(BusStop stop) async {
-    await _client.from('bus_stops').insert(stop.toJson());
-  }
-
-  Future<void> updateBusStop(BusStop stop) async {
-    await _client.from('bus_stops').update(stop.toJson()).eq('id', stop.id);
-  }
-
-  Future<void> deleteBusStop(String id) async {
-    await _client.from('bus_stops').delete().eq('id', id);
+  Future<List<BusStop>> getNearbyBusStops(double lat, double lng, double radiusInMeters) async {
+    try {
+      // Using PostGIS ST_DWithin to find stops within radius
+      final response = await _client
+          .rpc('get_nearby_stops', params: {
+            'ref_lat': lat,
+            'ref_lng': lng,
+            'radius_meters': radiusInMeters
+          });
+      
+      if (response is! List) {
+        throw FormatException('Expected a list but got ${response.runtimeType}');
+      }
+      
+      return response.map((data) => BusStop.fromJson(data)).toList();
+    } catch (e) {
+      throw Exception('Failed to get nearby bus stops: $e');
+    }
   }
 }

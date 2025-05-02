@@ -1,29 +1,43 @@
+import 'package:injectable/injectable.dart';
+
 import '../datasources/bus_route_remote_datasource.dart';
 import '../model/bus_route.dart';
 
+@lazySingleton
 class BusRouteRepository {
   final BusRouteRemoteDatasource _remoteDatasource;
 
-  BusRouteRepository([BusRouteRemoteDatasource? remoteDatasource])
-    : _remoteDatasource = remoteDatasource ?? BusRouteRemoteDatasource();
+  BusRouteRepository(this._remoteDatasource);
 
   Future<List<BusRoute>> getAllBusRoutes() {
-    return _remoteDatasource.getAllBusRoutes();
+    return _remoteDatasource.getBusRoutes();
   }
 
-  Future<BusRoute?> getBusRouteById(String id) {
-    return _remoteDatasource.getBusRouteById(id);
+  Future<BusRoute?> getBusRouteById(String id) async {
+    try {
+      return await _remoteDatasource.getBusRouteById(id);
+    } catch (e) {
+      return null;
+    }
+  }
+  
+  Future<List<BusRoute>> searchBusRoutes(String query) {
+    return _remoteDatasource.searchBusRoutes(query);
   }
 
-  Future<void> addBusRoute(BusRoute route) {
-    return _remoteDatasource.addBusRoute(route);
+  // Admin-only methods
+  Future<void> addBusRoute(BusRoute route) async {
+    // Implementation depends on your admin API
+    throw UnimplementedError('Admin functionality not implemented');
   }
 
-  Future<void> updateBusRoute(BusRoute route) {
-    return _remoteDatasource.updateBusRoute(route);
+  Future<void> updateBusRoute(BusRoute route) async {
+    // Implementation depends on your admin API
+    throw UnimplementedError('Admin functionality not implemented');
   }
 
-  Future<void> deleteBusRoute(String id) {
-    return _remoteDatasource.deleteBusRoute(id);
+  Future<void> deleteBusRoute(String id) async {
+    // Implementation depends on your admin API
+    throw UnimplementedError('Admin functionality not implemented');
   }
 }

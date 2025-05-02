@@ -1,5 +1,5 @@
-import 'package:busmapcantho/domain/entities/account_user_entity.dart';
 import 'package:injectable/injectable.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../repositories/auth_repository.dart';
 
@@ -9,5 +9,5 @@ class GetCurrentUserUseCase {
 
   GetCurrentUserUseCase(this._repo);
 
-  Future<AccountUserEntity?> call() => _repo.getCurrentUser();
+  Future<User?> call() => _repo.getCurrentUser();
 }

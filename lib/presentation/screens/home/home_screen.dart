@@ -4,7 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
-import '../map_screen.dart';
+import 'map/map_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -80,6 +80,12 @@ class HomeScreen extends StatelessWidget {
                       ),*/
                       _buildFunctionButton(
                         context,
+                        Icons.bus_alert,
+                        'List Bus',
+                        () => context.go(AppRoutes.busRoutes),
+                      ),
+                      _buildFunctionButton(
+                        context,
                         Icons.location_on,
                         'nearbyStops'.tr(),
                         () => context.go(AppRoutes.directions),
@@ -90,7 +96,7 @@ class HomeScreen extends StatelessWidget {
               ),
             ),
           ),
-        /*  Expanded(child: MapScreen()),*/
+          Expanded(child: MapScreen()),
         ],
       ),
     );

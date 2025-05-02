@@ -1,25 +1,23 @@
 import 'dart:io';
 
-import 'package:busmapcantho/domain/entities/account_user_entity.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 abstract class AuthRepository {
-
   Future<AuthResponse> signInWithEmail(String email, String password);
 
   Future<AuthResponse> signUpWithEmail(
-      String email,
-      String password,
-      String fullName,
-      );
+    String email,
+    String password,
+    String fullName,
+  );
 
   Future<AuthResponse> signInWithGoogleNative();
 
-  Future<AccountUserEntity?> getCurrentUser();
+  Future<User?> getCurrentUser();
 
-  Future<AccountUserEntity> updateDisplayName(String fullName);
+  Future<User> updateDisplayName(String fullName);
 
-  Future<AccountUserEntity> updateProfileImage(File file);
+  Future<User> updateProfileImage(File file);
 
   Future<void> changePassword(String newPassword);
 
@@ -34,4 +32,6 @@ abstract class AuthRepository {
     required String otp,
     required String newPassword,
   });
+
+  Future<String?> getStoredToken();
 }
