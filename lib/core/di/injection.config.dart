@@ -49,8 +49,8 @@ import 'package:busmapcantho/data/repositories/feedback_repository.dart'
     as _i566;
 import 'package:busmapcantho/data/repositories/notification_repository.dart'
     as _i773;
-import 'package:busmapcantho/data/repositories/route_stop_repository.dart'
-    as _i125;
+import 'package:busmapcantho/data/repositories/route_stops_repository.dart'
+    as _i730;
 import 'package:busmapcantho/data/repositories/search_history_repository.dart'
     as _i101;
 import 'package:busmapcantho/data/repositories/ticket_repository.dart' as _i988;
@@ -146,8 +146,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i848.AgencyRemoteDatasource>(
       () => _i848.AgencyRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
-    gh.lazySingleton<_i125.RouteStopRepository>(
-      () => _i125.RouteStopRepository(gh<_i68.RouteStopRemoteDatasource>()),
+    gh.lazySingleton<_i730.RouteStopsRepository>(
+      () => _i730.RouteStopsRepository(gh<_i68.RouteStopRemoteDatasource>()),
     );
     gh.lazySingleton<_i335.UserFavoriteRepository>(
       () => _i335.UserFavoriteRepository(
@@ -168,6 +168,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i530.BusLocationRepository>(
       () =>
           _i530.BusLocationRepository(gh<_i662.BusLocationRemoteDatasource>()),
+    );
+    gh.factory<_i962.MapCubit>(
+      () => _i962.MapCubit(gh<_i16.BusStopRepository>()),
     );
     gh.lazySingleton<_i556.AuthRepository>(
       () => _i736.AuthRepositoryImpl(gh<_i1019.AuthRemoteDatasource>()),
@@ -198,17 +201,18 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i566.FeedbackRepository>(
       () => _i566.FeedbackRepository(gh<_i502.FeedbackRemoteDatasource>()),
     );
+    gh.factory<_i619.RoutesCubit>(
+      () => _i619.RoutesCubit(
+        gh<_i705.BusRouteRepository>(),
+        gh<_i309.FavoriteRouteRepository>(),
+        gh<_i730.RouteStopsRepository>(),
+      ),
+    );
     gh.lazySingleton<_i988.TicketRepository>(
       () => _i988.TicketRepository(gh<_i366.TicketRemoteDatasource>()),
     );
     gh.factory<_i298.GetAllBusRoutesUseCase>(
       () => _i298.GetAllBusRoutesUseCase(gh<_i705.BusRouteRepository>()),
-    );
-    gh.factory<_i619.RoutesCubit>(
-      () => _i619.RoutesCubit(
-        gh<_i705.BusRouteRepository>(),
-        gh<_i309.FavoriteRouteRepository>(),
-      ),
     );
     gh.factory<_i451.SaveFavoriteRouteUseCase>(
       () => _i451.SaveFavoriteRouteUseCase(gh<_i309.FavoriteRouteRepository>()),
@@ -216,9 +220,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i511.RemoveFavoriteRouteUseCase>(
       () =>
           _i511.RemoveFavoriteRouteUseCase(gh<_i309.FavoriteRouteRepository>()),
-    );
-    gh.factory<_i962.MapCubit>(
-      () => _i962.MapCubit(gh<_i797.GetAllBusStopsUseCase>()),
     );
     gh.factory<_i421.SignUpUseCase>(
       () => _i421.SignUpUseCase(gh<_i556.AuthRepository>()),

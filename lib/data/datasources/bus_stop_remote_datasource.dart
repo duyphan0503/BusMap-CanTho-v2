@@ -8,18 +8,11 @@ class BusStopRemoteDatasource {
   final SupabaseClient _client;
 
   BusStopRemoteDatasource([SupabaseClient? client])
-      : _client = client ?? Supabase.instance.client;
+    : _client = client ?? Supabase.instance.client;
 
   Future<List<BusStop>> getBusStops() async {
     try {
-      final response = await _client
-          .from('stops')
-          .select()
-          .order('name');
-
-      if (response is! List) {
-        throw FormatException('Expected a list but got ${response.runtimeType}');
-      }
+      final response = await _client.from('stops').select().order('name');
 
       return response.map((data) => BusStop.fromJson(data)).toList();
     } catch (e) {
@@ -29,11 +22,8 @@ class BusStopRemoteDatasource {
 
   Future<BusStop> getBusStopById(String id) async {
     try {
-      final response = await _client
-          .from('stops')
-          .select()
-          .eq('id', id)
-          .single();
+      final response =
+          await _client.from('stops').select().eq('id', id).single();
 
       return BusStop.fromJson(response);
     } catch (e) {
@@ -49,30 +39,34 @@ class BusStopRemoteDatasource {
           .ilike('name', '%$query%')
           .order('name');
 
-      if (response is! List) {
-        throw FormatException('Expected a list but got ${response.runtimeType}');
-      }
-
       return response.map((data) => BusStop.fromJson(data)).toList();
     } catch (e) {
       throw Exception('Failed to search bus stops: $e');
     }
   }
 
-  Future<List<BusStop>> getNearbyBusStops(double lat, double lng, double radiusInMeters) async {
+  Future<List<BusStop>> getNearbyBusStops(
+    double lat,
+    double lng,
+    double radiusInMeters,
+  ) async {
     try {
       // Using PostGIS ST_DWithin to find stops within radius
-      final response = await _client
-          .rpc('get_nearby_stops', params: {
-            'ref_lat': lat,
-            'ref_lng': lng,
-            'radius_meters': radiusInMeters
-          });
-      
+      final response = await _client.rpc(
+        'get_nearby_stops',
+        params: {
+          'ref_lat': lat,
+          'ref_lng': lng,
+          'radius_meters': radiusInMeters,
+        },
+      );
+
       if (response is! List) {
-        throw FormatException('Expected a list but got ${response.runtimeType}');
+        throw FormatException(
+          'Expected a list but got ${response.runtimeType}',
+        );
       }
-      
+
       return response.map((data) => BusStop.fromJson(data)).toList();
     } catch (e) {
       throw Exception('Failed to get nearby bus stops: $e');

@@ -4,11 +4,12 @@ class RoutesState extends Equatable {
   final List<BusRoute> allRoutes;
   final List<BusRoute> favoriteRoutes;
   final List<BusRoute> searchResults;
-  
+  final Map<String, List<BusStop>> routeStopsMap;
+
   final bool isLoadingAll;
   final bool isLoadingFavorites;
   final bool isSearching;
-  
+
   final String? allRoutesError;
   final String? favoritesError;
   final String? searchError;
@@ -18,6 +19,7 @@ class RoutesState extends Equatable {
     this.allRoutes = const [],
     this.favoriteRoutes = const [],
     this.searchResults = const [],
+    this.routeStopsMap = const {},
     this.isLoadingAll = false,
     this.isLoadingFavorites = false,
     this.isSearching = false,
@@ -31,6 +33,7 @@ class RoutesState extends Equatable {
     List<BusRoute>? allRoutes,
     List<BusRoute>? favoriteRoutes,
     List<BusRoute>? searchResults,
+    Map<String, List<BusStop>>? routeStopsMap,
     bool? isLoadingAll,
     bool? isLoadingFavorites,
     bool? isSearching,
@@ -43,6 +46,7 @@ class RoutesState extends Equatable {
       allRoutes: allRoutes ?? this.allRoutes,
       favoriteRoutes: favoriteRoutes ?? this.favoriteRoutes,
       searchResults: searchResults ?? this.searchResults,
+      routeStopsMap: routeStopsMap ?? this.routeStopsMap,
       isLoadingAll: isLoadingAll ?? this.isLoadingAll,
       isLoadingFavorites: isLoadingFavorites ?? this.isLoadingFavorites,
       isSearching: isSearching ?? this.isSearching,
@@ -55,15 +59,16 @@ class RoutesState extends Equatable {
 
   @override
   List<Object?> get props => [
-        allRoutes,
-        favoriteRoutes,
-        searchResults,
-        isLoadingAll,
-        isLoadingFavorites,
-        isSearching,
-        allRoutesError,
-        favoritesError,
-        searchError,
-        favoriteActionError,
-      ];
+    allRoutes,
+    favoriteRoutes,
+    searchResults,
+    routeStopsMap,
+    isLoadingAll,
+    isLoadingFavorites,
+    isSearching,
+    allRoutesError,
+    favoritesError,
+    searchError,
+    favoriteActionError,
+  ];
 }

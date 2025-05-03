@@ -234,8 +234,12 @@ class _BusRoutesScreenState extends State<BusRoutesScreen>
                 (r) => r.id == route.id,
               );
 
+              // Get stops for this route from the state
+              final stops = state.routeStopsMap[route.id];
+
               return RouteCardWidget(
                 route: route,
+                stops: stops,
                 isFavorite: isFavorite,
                 onFavoriteToggle: () {
                   if (isFavorite) {
