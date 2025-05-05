@@ -5,8 +5,8 @@ import 'package:busmapcantho/data/repositories/bus_stop_repository.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:injectable/injectable.dart';
+import 'package:latlong2/latlong.dart';
 
 part 'map_state.dart';
 
@@ -151,28 +151,6 @@ class MapCubit extends Cubit<MapState> {
     final currentState = state;
     if (currentState is MapLoaded) {
       emit(currentState.copyWith(selectedStop: null));
-    }
-  }
-
-  Future<void> refreshNearbyStops() async {
-    if (_isClosed) return;
-    
-    final currentState = state;
-    if (currentState is MapLoaded) {
-      try {
-        final nearbyStops = await _loadNearbyStops(
-          currentState.currentPosition.latitude,
-          currentState.currentPosition.longitude,
-        );
-        
-        if (!_isClosed) {
-          emit(currentState.copyWith(nearbyStops: nearbyStops));
-        }
-      } catch (e) {
-        if (!_isClosed) {
-          emit(MapError('Error refreshing nearby stops: $e'));
-        }
-      }
     }
   }
 }

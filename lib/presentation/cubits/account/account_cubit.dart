@@ -86,10 +86,12 @@ class AccountCubit extends Cubit<AccountState> {
       await prefs.setBool('notifications_enabled', enabled);
       final currentState = state;
       if (currentState is AccountLoaded) {
-        emit(AccountUpdateSuccess(
-          enabled ? 'Notifications enabled.' : 'Notifications disabled.',
-          currentState.user,
-        ));
+        emit(
+          AccountUpdateSuccess(
+            enabled ? 'Notifications enabled.' : 'Notifications disabled.',
+            currentState.user,
+          ),
+        );
       } else {
         emit(AccountError('No user loaded.'));
       }

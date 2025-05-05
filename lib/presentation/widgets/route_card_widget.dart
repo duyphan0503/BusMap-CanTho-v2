@@ -20,69 +20,117 @@ class RouteCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    String stopsText = '';
-    if (stops != null && stops!.isNotEmpty) {
-      stopsText = '${stops!.first.name} - ${stops!.last.name}';
-    } else {
-      stopsText = 'Data loading...';
-    }
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 6, horizontal: 12),
       child: InkWell(
         onTap: onTap,
         child: Padding(
           padding: const EdgeInsets.all(12.0),
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Theme.of(context).primaryColor,
-                borderRadius: BorderRadius.circular(4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).primaryColor,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      route.routeNumber,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      route.routeName,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  // Simplify the favorite button to ensure it works
+                  IconButton(
+                    icon: Icon(
+                      isFavorite ? Icons.favorite : Icons.favorite_border,
+                      color: isFavorite ? Colors.red : Colors.grey,
+                    ),
+                    onPressed: () {
+                      print("Heart icon pressed for ${route.routeNumber}");
+                      if (onFavoriteToggle != null) {
+                        onFavoriteToggle!();
+                      }
+                    },
+                    padding: const EdgeInsets.all(8.0),
+                    constraints: const BoxConstraints(),
+                  ),
+                ],
               ),
-              child: Text(
-                route.routeNumber,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-            title: Text(
-              route.routeName,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(stopsText, style: Theme.of(context).textTheme.bodySmall),
+              const SizedBox(height: 8),
+              // Show route stops if available
+              if (stops != null && stops!.length >= 2)
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    if (route.operatingHoursDescription != null)
-                      Text(
-                        '${route.operatingHoursDescription}',
+                    Expanded(
+                      child: Text(
+                        '${stops!.first.name} - ${stops!.last.name}',
                         style: Theme.of(context).textTheme.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                    const SizedBox(width: 6),
-                    if (route.fareInfo != null)
-                      Text(
-                        '${route.fareInfo}',
+                    ),
+                  ],
+                )
+              else
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        route.description ?? '',
                         style: Theme.of(context).textTheme.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                    ),
                   ],
                 ),
-              ],
-            ),
-            trailing: IconButton(
-              icon: Icon(
-                isFavorite ? Icons.favorite : Icons.favorite_border,
-                color: isFavorite ? Colors.red : Colors.grey,
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  if (route.operatingHoursDescription != null)
+                    Expanded(
+                      child: Text(
+                        route.operatingHoursDescription!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                ],
               ),
-              onPressed: onFavoriteToggle,
-              constraints: const BoxConstraints(),
-              padding: EdgeInsets.zero,
-            ),
+              if (route.fareInfo != null)
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        route.fareInfo!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
           ),
         ),
       ),

@@ -8,9 +8,10 @@ import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/sign_in_screen.dart';
 import '../screens/auth/sign_up_screen.dart';
 import '../screens/favorites_screen.dart';
+import '../screens/home/directions/directions_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/home/map/map_screen.dart';
-import '../screens/search_screen.dart';
+import '../screens/home/search/search_screen.dart';
 import '../screens/splash_screen.dart';
 import 'app_routes.dart';
 
@@ -66,7 +67,7 @@ class AppRouter {
             path: AppRoutes.map,
             builder: (context, state) => const MapScreen(),
           ),
-          /*          GoRoute(
+          /*GoRoute(
             path: AppRoutes.directions,
             builder: (context, state) => const DirectionsScreen(),
           ),*/
@@ -81,10 +82,10 @@ class AppRouter {
               return RouteDetailsScreen(routeId: routeId);
             },
           ),*/
-          GoRoute(
+          /*GoRoute(
             path: AppRoutes.search,
             builder: (context, state) => const SearchScreen(),
-          ),
+          ),*/
           GoRoute(
             path: AppRoutes.favorites,
             builder: (context, state) => const FavoritesScreen(),

@@ -94,9 +94,15 @@ import 'package:busmapcantho/domain/usecases/favorite/save_favorite_route_usecas
 import 'package:busmapcantho/presentation/cubits/account/account_cubit.dart'
     as _i601;
 import 'package:busmapcantho/presentation/cubits/auth/auth_cubit.dart' as _i122;
+import 'package:busmapcantho/presentation/cubits/directions/directions_cubit.dart'
+    as _i752;
+import 'package:busmapcantho/presentation/cubits/favorites/favorites_cubit.dart'
+    as _i166;
 import 'package:busmapcantho/presentation/cubits/map/map_cubit.dart' as _i962;
 import 'package:busmapcantho/presentation/cubits/routes/routes_cubit.dart'
     as _i619;
+import 'package:busmapcantho/presentation/cubits/search/search_cubit.dart'
+    as _i907;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:supabase_flutter/supabase_flutter.dart' as _i454;
@@ -109,6 +115,7 @@ extension GetItInjectableX on _i174.GetIt {
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
+    gh.factory<_i752.DirectionsCubit>(() => _i752.DirectionsCubit());
     gh.lazySingleton<_i454.SupabaseClient>(() => registerModule.supabaseClient);
     gh.lazySingleton<_i649.SearchHistoryRemoteDatasource>(
       () => _i649.SearchHistoryRemoteDatasource(gh<_i454.SupabaseClient>()),
@@ -221,6 +228,13 @@ extension GetItInjectableX on _i174.GetIt {
       () =>
           _i511.RemoveFavoriteRouteUseCase(gh<_i309.FavoriteRouteRepository>()),
     );
+    gh.factory<_i907.SearchCubit>(
+      () => _i907.SearchCubit(
+        gh<_i705.BusRouteRepository>(),
+        gh<_i16.BusStopRepository>(),
+        gh<_i101.SearchHistoryRepository>(),
+      ),
+    );
     gh.factory<_i421.SignUpUseCase>(
       () => _i421.SignUpUseCase(gh<_i556.AuthRepository>()),
     );
@@ -253,6 +267,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i686.GoogleSignInNativeUseCase>(
       () => _i686.GoogleSignInNativeUseCase(gh<_i556.AuthRepository>()),
+    );
+    gh.factory<_i166.FavoritesCubit>(
+      () => _i166.FavoritesCubit(
+        gh<_i309.FavoriteRouteRepository>(),
+        gh<_i335.UserFavoriteRepository>(),
+      ),
     );
     gh.factory<_i601.AccountCubit>(
       () => _i601.AccountCubit(

@@ -22,6 +22,10 @@ class $AssetsAnimationsGen {
 class $AssetsImagesGen {
   const $AssetsImagesGen();
 
+  /// File path: assets/images/bus_stops.png
+  AssetGenImage get busStops =>
+      const AssetGenImage('assets/images/bus_stops.png');
+
   /// File path: assets/images/default_avatar.png
   AssetGenImage get defaultAvatar =>
       const AssetGenImage('assets/images/default_avatar.png');
@@ -34,7 +38,7 @@ class $AssetsImagesGen {
       const AssetGenImage('assets/images/my_location.png');
 
   /// List of all assets
-  List<AssetGenImage> get values => [defaultAvatar, logo, myLocation];
+  List<AssetGenImage> get values => [busStops, defaultAvatar, logo, myLocation];
 }
 
 class $AssetsTranslationsGen {

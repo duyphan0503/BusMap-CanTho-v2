@@ -1,31 +1,46 @@
-import 'package:google_maps_flutter/google_maps_flutter.dart';
-import 'package:google_maps_webservice/places.dart';
+import 'dart:convert';
 
-import '../configs/secure_config.dart';
+import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 
 class PlacesService {
-  late final GoogleMapsPlaces _places;
+  Future<List<NominatimPlace>> searchPlaces(String query) async {
+    final url = Uri.parse(
+      'https://nominatim.openstreetmap.org/search'
+      '?q=${Uri.encodeComponent(query)}'
+      '&format=json&addressdetails=1'
+      '&limit=5'
+      '&countrycodes=vn'
+      '&viewbox=104.5,10.0,106.0,10.5',
+    );
+    final response = await http.get(
+      url,
+      headers: {'User-Agent': 'busmapcantho'},
+    );
+    if (response.statusCode != 200) return [];
+    final data = jsonDecode(response.body) as List;
+    return data.map((e) => NominatimPlace.fromJson(e)).toList();
+  }
+}
 
-  PlacesService() {
-    _init();
+class NominatimPlace {
+  final String displayName;
+  final double lat;
+  final double lon;
+
+  NominatimPlace({
+    required this.displayName,
+    required this.lat,
+    required this.lon,
+  });
+
+  factory NominatimPlace.fromJson(Map<String, dynamic> json) {
+    return NominatimPlace(
+      displayName: json['display_name'] as String,
+      lat: double.parse(json['lat'] as String),
+      lon: double.parse(json['lon'] as String),
+    );
   }
 
-  Future<void> _init() async {
-    final apiKey = await SecureConfig.getGoogleMapsKey();
-    _places = GoogleMapsPlaces(apiKey: apiKey);
-  }
-
-  Future<List<Prediction>> searchPlace(String query) async {
-    final response = await _places.autocomplete(query, types: ['geocode']);
-    return response.predictions;
-  }
-
-  Future<LatLng?> getPlaceLocation(String placeId) async {
-    final details = await _places.getDetailsByPlaceId(placeId);
-    final location = details.result.geometry?.location;
-    if (location != null) {
-      return LatLng(location.lat, location.lng);
-    }
-    return null;
-  }
+  LatLng get toLatLng => LatLng(lat, lon);
 }

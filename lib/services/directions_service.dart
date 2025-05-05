@@ -1,48 +1,41 @@
 import 'dart:convert';
 
-import 'package:flutter_polyline_points/flutter_polyline_points.dart';
-import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:http/http.dart' as http;
-
-import '../configs/secure_config.dart';
+import 'package:latlong2/latlong.dart';
 
 class DirectionsService {
-  Future<Map<String, dynamic>> getDirections(
-    LatLng origin,
-    LatLng destination,
-  ) async {
-    final apiKey = await SecureConfig.getGoogleMapsKey();
-    final url =
-        'https://maps.googleapis.com/maps/api/directions/json?'
-        'origin=${origin.latitude},${origin.longitude}&'
-        'destination=${destination.latitude},${destination.longitude}&'
-        'key=$apiKey';
-
-    final response = await http.get(Uri.parse(url));
-    if (response.statusCode != 200) {
-      throw Exception('Failed to fetch directions');
-    }
-
-    final data = jsonDecode(response.body);
-    if (data['status'] != 'OK') {
-      throw Exception('Directions API error: ${data['status']}');
-    }
-
-    final route = data['routes'][0];
-    final leg = route['legs'][0];
-    final polyline = route['overview_polyline']['points'];
-
-    // Decode polyline
-    final polylinePoints = PolylinePoints().decodePolyline(polyline);
-    final List<LatLng> points =
-        polylinePoints
-            .map((point) => LatLng(point.latitude, point.longitude))
+  Future<DirectionsResult?> getDirections(LatLng start, LatLng end) async {
+    final url = Uri.parse(
+      'https://router.project-osrm.org/route/v1/driving/'
+      '${start.longitude},${start.latitude};'
+      '${end.longitude},${end.latitude}'
+      '?overview=full&geometries=geojson',
+    );
+    final resp = await http.get(url);
+    if (resp.statusCode != 200) return null;
+    final data = jsonDecode(resp.body) as Map<String, dynamic>;
+    if ((data['routes'] as List).isEmpty) return null;
+    final coords =
+        (data['routes'][0]['geometry']['coordinates'] as List)
+            .map<LatLng>((c) => LatLng(c[1] as double, c[0] as double))
             .toList();
-
-    return {
-      'polyline': points,
-      'distance': leg['distance']['text'],
-      'duration': leg['duration']['text'],
-    };
+    final leg = (data['routes'][0]['legs'] as List).first;
+    return DirectionsResult(
+      polyline: coords,
+      distanceText: leg['distance'].toString(),
+      durationText: leg['duration'].toString(),
+    );
   }
+}
+
+class DirectionsResult {
+  final List<LatLng> polyline;
+  final String distanceText;
+  final String durationText;
+
+  DirectionsResult({
+    required this.polyline,
+    required this.distanceText,
+    required this.durationText,
+  });
 }

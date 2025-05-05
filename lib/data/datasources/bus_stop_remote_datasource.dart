@@ -46,12 +46,11 @@ class BusStopRemoteDatasource {
   }
 
   Future<List<BusStop>> getNearbyBusStops(
-    double lat,
-    double lng,
-    double radiusInMeters,
-  ) async {
+      double lat,
+      double lng,
+      double radiusInMeters,
+      ) async {
     try {
-      // Using PostGIS ST_DWithin to find stops within radius
       final response = await _client.rpc(
         'get_nearby_stops',
         params: {
