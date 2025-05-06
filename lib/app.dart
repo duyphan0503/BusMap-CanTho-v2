@@ -1,3 +1,4 @@
+import 'package:busmapcantho/core/theme/app_theme.dart';
 import 'package:busmapcantho/presentation/cubits/account/account_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/auth/auth_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/directions/directions_cubit.dart';
@@ -32,19 +33,8 @@ class _BusMapCanThoAppState extends State<BusMapCanThoApp> {
       ],
       child: MaterialApp.router(
         title: 'appTitle'.tr(),
-        theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-          primaryColor: Colors.blue,
-          useMaterial3: true,
-        ),
-        darkTheme: ThemeData(
-          brightness: Brightness.dark,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: Colors.blue,
-            brightness: Brightness.dark,
-          ),
-          useMaterial3: true,
-        ),
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
         themeMode: ThemeMode.system,
         debugShowCheckedModeBanner: false,
         // EasyLocalization support

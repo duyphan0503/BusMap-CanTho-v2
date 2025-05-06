@@ -103,6 +103,7 @@ import 'package:busmapcantho/presentation/cubits/routes/routes_cubit.dart'
     as _i619;
 import 'package:busmapcantho/presentation/cubits/search/search_cubit.dart'
     as _i907;
+import 'package:busmapcantho/services/places_service.dart' as _i364;
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:supabase_flutter/supabase_flutter.dart' as _i454;
@@ -115,6 +116,7 @@ extension GetItInjectableX on _i174.GetIt {
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     final registerModule = _$RegisterModule();
+    gh.factory<_i364.PlacesService>(() => _i364.PlacesService());
     gh.factory<_i752.DirectionsCubit>(() => _i752.DirectionsCubit());
     gh.lazySingleton<_i454.SupabaseClient>(() => registerModule.supabaseClient);
     gh.lazySingleton<_i649.SearchHistoryRemoteDatasource>(
@@ -123,8 +125,14 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1019.AuthRemoteDatasource>(
       () => _i1019.AuthRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
+    gh.lazySingleton<_i761.UserFavoriteRemoteDatasource>(
+      () => _i761.UserFavoriteRemoteDatasource(gh<_i454.SupabaseClient>()),
+    );
     gh.lazySingleton<_i628.BusRouteRemoteDatasource>(
       () => _i628.BusRouteRemoteDatasource(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i662.BusLocationRemoteDatasource>(
+      () => _i662.BusLocationRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i502.FeedbackRemoteDatasource>(
       () => _i502.FeedbackRemoteDatasource(gh<_i454.SupabaseClient>()),
@@ -144,12 +152,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i257.BusStopRemoteDatasource>(
       () => _i257.BusStopRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
-    gh.lazySingleton<_i761.UserFavoriteRemoteDatasource>(
-      () => _i761.UserFavoriteRemoteDatasource(gh<_i454.SupabaseClient>()),
-    );
-    gh.lazySingleton<_i662.BusLocationRemoteDatasource>(
-      () => _i662.BusLocationRemoteDatasource(gh<_i454.SupabaseClient>()),
-    );
     gh.lazySingleton<_i848.AgencyRemoteDatasource>(
       () => _i848.AgencyRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
@@ -159,6 +161,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i335.UserFavoriteRepository>(
       () => _i335.UserFavoriteRepository(
         gh<_i761.UserFavoriteRemoteDatasource>(),
+      ),
+    );
+    gh.lazySingleton<_i309.FavoriteRouteRepository>(
+      () => _i309.FavoriteRouteRepository(
+        gh<_i553.FavoriteRouteRemoteDatasource>(),
       ),
     );
     gh.lazySingleton<_i773.NotificationRepository>(
@@ -187,6 +194,12 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i649.SearchHistoryRemoteDatasource>(),
       ),
     );
+    gh.factory<_i166.FavoritesCubit>(
+      () => _i166.FavoritesCubit(
+        gh<_i309.FavoriteRouteRepository>(),
+        gh<_i335.UserFavoriteRepository>(),
+      ),
+    );
     gh.factory<_i345.GetBusStopByIdUseCase>(
       () => _i345.GetBusStopByIdUseCase(gh<_i16.BusStopRepository>()),
     );
@@ -198,12 +211,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i638.AgencyRepository>(
       () => _i638.AgencyRepository(gh<_i848.AgencyRemoteDatasource>()),
-    );
-    gh.lazySingleton<_i309.FavoriteRouteRepository>(
-      () => _i309.FavoriteRouteRepository(
-        gh<_i553.FavoriteRouteRemoteDatasource>(),
-        gh<_i454.SupabaseClient>(),
-      ),
     );
     gh.lazySingleton<_i566.FeedbackRepository>(
       () => _i566.FeedbackRepository(gh<_i502.FeedbackRemoteDatasource>()),
@@ -267,12 +274,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i686.GoogleSignInNativeUseCase>(
       () => _i686.GoogleSignInNativeUseCase(gh<_i556.AuthRepository>()),
-    );
-    gh.factory<_i166.FavoritesCubit>(
-      () => _i166.FavoritesCubit(
-        gh<_i309.FavoriteRouteRepository>(),
-        gh<_i335.UserFavoriteRepository>(),
-      ),
     );
     gh.factory<_i601.AccountCubit>(
       () => _i601.AccountCubit(

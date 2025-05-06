@@ -44,7 +44,7 @@ class BusMapWidget extends StatefulWidget {
 
 class _BusMapWidgetState extends State<BusMapWidget>
     with TickerProviderStateMixin, AutomaticKeepAliveClientMixin {
-  static const _canThoCenter = osm.LatLng(10.025817, 105.7470982);
+  static const _canThoCenter = osm.LatLng(10.0364634, 105.7875821);
   static const _initialZoom = 13.0;
   static const _markerVisibilityZoomThreshold = 13.0;
 
@@ -117,122 +117,122 @@ class _BusMapWidgetState extends State<BusMapWidget>
 
             if (_showMarkers)
               MarkerLayer(
-                markers: widget.busStops.map((stop) {
-                  final isSelected = widget.selectedStop?.id == stop.id;
-                  return Marker(
-                    width: isSelected ? 40 : 32,
-                    height: isSelected ? 40 : 32,
-                    point: osm.LatLng(stop.latitude, stop.longitude),
-                    child: GestureDetector(
-                      onTap: () {
-                        widget.onStopSelected(stop);
-                        _mapCtrl.animateTo(
-                          dest: osm.LatLng(
-                            stop.latitude,
-                            stop.longitude,
+                markers:
+                    widget.busStops.map((stop) {
+                      final isSelected = widget.selectedStop?.id == stop.id;
+                      return Marker(
+                        width: isSelected ? 40 : 32,
+                        height: isSelected ? 40 : 32,
+                        point: osm.LatLng(stop.latitude, stop.longitude),
+                        child: GestureDetector(
+                          onTap: () {
+                            widget.onStopSelected(stop);
+                            _mapCtrl.animateTo(
+                              dest: osm.LatLng(stop.latitude, stop.longitude),
+                              zoom: _currentZoom < 15 ? 15 : _currentZoom,
+                            );
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: EdgeInsets.all(isSelected ? 2 : 0),
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color:
+                                  isSelected
+                                      ? Colors.blue.shade300
+                                      : Colors.transparent,
+                            ),
+                            child: Image.asset(
+                              Assets.images.busStops.path,
+                              color: isSelected ? Colors.blue.shade700 : null,
+                            ),
                           ),
-                          zoom: _currentZoom < 15 ? 15 : _currentZoom,
-                        );
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: EdgeInsets.all(isSelected ? 2 : 0),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isSelected
-                              ? Colors.blue.shade300
-                              : Colors.transparent,
                         ),
-                        child: Image.asset(
-                          Assets.images.busStops.path,
-                          color: isSelected ? Colors.blue.shade700 : null,
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+                      );
+                    }).toList(),
               ),
           ],
         ),
         _buildZoomControls(),
         _buildMapControls(),
         if (!_showMarkers) _buildZoomNotification(),
-        if (widget.selectedStop != null) _buildStopInfoCard(widget.selectedStop!),
+        if (widget.selectedStop != null)
+          _buildStopInfoCard(widget.selectedStop!),
         if (widget.isLoading) const Center(child: CircularProgressIndicator()),
       ],
     );
   }
 
   Widget _buildZoomControls() => Positioned(
-        bottom: 16,
-        right: 16,
-        child: Column(
-          children: [
-            FloatingActionButton(
-              heroTag: 'zoom_in',
-              mini: true,
-              onPressed: () => _mapCtrl.animateTo(zoom: _currentZoom + 1),
-              child: const Icon(Icons.add),
-            ),
-            const SizedBox(height: 4),
-            FloatingActionButton(
-              heroTag: 'zoom_out',
-              mini: true,
-              onPressed: () => _mapCtrl.animateTo(zoom: _currentZoom - 1),
-              child: const Icon(Icons.remove),
-            ),
-          ],
+    bottom: 16,
+    right: 16,
+    child: Column(
+      children: [
+        FloatingActionButton(
+          heroTag: 'zoom_in',
+          mini: true,
+          onPressed: () => _mapCtrl.animateTo(zoom: _currentZoom + 1),
+          child: const Icon(Icons.add),
         ),
-      );
+        const SizedBox(height: 4),
+        FloatingActionButton(
+          heroTag: 'zoom_out',
+          mini: true,
+          onPressed: () => _mapCtrl.animateTo(zoom: _currentZoom - 1),
+          child: const Icon(Icons.remove),
+        ),
+      ],
+    ),
+  );
 
   Widget _buildMapControls() => Positioned(
-        top: 16,
-        right: 16,
-        child: Row(
-          children: [
-            FloatingActionButton(
-              heroTag: 'reload_stops',
-              mini: true,
-              onPressed: widget.refreshStops,
-              tooltip: 'reload'.tr(),
-              child: const Icon(Icons.refresh),
-            ),
-            const SizedBox(height: 8),
-            FloatingActionButton(
-              heroTag: 'my_location',
-              mini: true,
-              onPressed: () {
-                _mapCtrl.animateTo(
-                  dest: widget.userLocation,
-                  zoom: _currentZoom < 15 ? 15 : _currentZoom,
-                );
-                widget.onCenterUser();
-              },
-              tooltip: 'myLocation'.tr(),
-              child: const Icon(Icons.my_location),
-            ),
-          ],
+    top: 16,
+    right: 16,
+    child: Row(
+      children: [
+        FloatingActionButton(
+          heroTag: 'reload_stops',
+          mini: true,
+          onPressed: widget.refreshStops,
+          tooltip: 'reload'.tr(),
+          child: const Icon(Icons.refresh),
         ),
-      );
+        const SizedBox(height: 8),
+        FloatingActionButton(
+          heroTag: 'my_location',
+          mini: true,
+          onPressed: () {
+            _mapCtrl.animateTo(
+              dest: widget.userLocation,
+              zoom: _currentZoom < 15 ? 15 : _currentZoom,
+            );
+            widget.onCenterUser();
+          },
+          tooltip: 'myLocation'.tr(),
+          child: const Icon(Icons.my_location),
+        ),
+      ],
+    ),
+  );
 
   Widget _buildZoomNotification() => Positioned(
-        top: 100,
-        left: 0,
-        right: 0,
-        child: Center(
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.black54,
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              'zoomInToSeeStops'.tr(),
-              style: const TextStyle(color: Colors.white),
-            ),
-          ),
+    top: 100,
+    left: 0,
+    right: 0,
+    child: Center(
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.black54,
+          borderRadius: BorderRadius.circular(20),
         ),
-      );
+        child: Text(
+          'zoomInToSeeStops'.tr(),
+          style: const TextStyle(color: Colors.white),
+        ),
+      ),
+    ),
+  );
 
   Widget _buildStopInfoCard(BusStop stop) {
     return Positioned(
@@ -319,10 +319,7 @@ class _BusMapWidgetState extends State<BusMapWidget>
 
   // Helper method to animate to user location
   void animateToUser() {
-    _mapCtrl.animateTo(
-      dest: widget.userLocation,
-      zoom: 15.0,
-    );
+    _mapCtrl.animateTo(dest: widget.userLocation, zoom: 15.0);
   }
 
   // Helper method to animate to a bus stop

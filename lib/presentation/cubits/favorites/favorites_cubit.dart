@@ -75,6 +75,7 @@ class FavoritesCubit extends Cubit<FavoritesState> {
       await loadFavoriteRoutes();
     } catch (e) {
       emit(state.copyWith(actionError: e.toString()));
+      debugPrint('Error adding favorite route: $e');
     }
   }
 

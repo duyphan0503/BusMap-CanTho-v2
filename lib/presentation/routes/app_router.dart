@@ -13,6 +13,7 @@ import '../screens/home/home_screen.dart';
 import '../screens/home/map/map_screen.dart';
 import '../screens/home/search/search_screen.dart';
 import '../screens/splash_screen.dart';
+import '../screens/stops/nearby_stops_screen.dart';
 import 'app_routes.dart';
 
 class AppRouter {
@@ -82,10 +83,13 @@ class AppRouter {
               return RouteDetailsScreen(routeId: routeId);
             },
           ),*/
-          /*GoRoute(
+          GoRoute(path: AppRoutes.nearbyStops,
+          builder: (context, state) => const NearbyStopsScreen(),
+          ),
+          GoRoute(
             path: AppRoutes.search,
             builder: (context, state) => const SearchScreen(),
-          ),*/
+          ),
           GoRoute(
             path: AppRoutes.favorites,
             builder: (context, state) => const FavoritesScreen(),

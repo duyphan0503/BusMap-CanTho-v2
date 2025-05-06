@@ -269,7 +269,6 @@ class _BusRoutesScreenState extends State<BusRoutesScreen>
                     stops: routesState.routeStopsMap[route.id],
                     isFavorite: isFavorite,
                     onFavoriteToggle: () {
-                      print("Toggling favorite for route ${route.id}"); // Debug
                       if (isFavorite) {
                         context.read<FavoritesCubit>().removeFavoriteRoute(route.id);
                       } else {

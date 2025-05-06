@@ -10,6 +10,7 @@ class AppRoutes {
   static const home = '/home';
   static const map = '/map';
   static const busRoutes = '/bus-routes';
+  static const nearbyStops = '/nearby-stops';
   static const routeDetails = '/route-details/:routeId';
 
   // Additional features

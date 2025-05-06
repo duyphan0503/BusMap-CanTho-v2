@@ -65,7 +65,6 @@ class RouteCardWidget extends StatelessWidget {
                       color: isFavorite ? Colors.red : Colors.grey,
                     ),
                     onPressed: () {
-                      print("Heart icon pressed for ${route.routeNumber}");
                       if (onFavoriteToggle != null) {
                         onFavoriteToggle!();
                       }

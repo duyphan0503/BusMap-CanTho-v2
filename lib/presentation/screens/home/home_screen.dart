@@ -136,7 +136,7 @@ class HomeScreen extends StatelessWidget {
     _Feature(
       icon: Icons.location_on,
       label: 'nearbyStops'.tr(),
-      route: AppRoutes.directions,
+      route: AppRoutes.nearbyStops,
     ),
     _Feature(icon: Icons.map, label: 'map'.tr(), route: AppRoutes.map),
     _Feature(

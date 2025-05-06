@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:busmapcantho/data/model/bus_stop.dart';
 import 'package:busmapcantho/data/repositories/bus_stop_repository.dart';
 import 'package:equatable/equatable.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:injectable/injectable.dart';
@@ -131,7 +132,7 @@ class MapCubit extends Cubit<MapState> {
     try {
       return await _busStopRepository.getNearbyBusStops(lat, lng, 1000);
     } catch (e) {
-      print('Error loading nearby stops: $e');
+      debugPrint('Error loading nearby stops: $e');
       return [];
     }
   }
