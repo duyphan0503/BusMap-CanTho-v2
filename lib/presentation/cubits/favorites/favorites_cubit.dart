@@ -1,7 +1,9 @@
-import 'package:busmapcantho/data/model/bus_route.dart';
 import 'package:busmapcantho/data/model/user_favorite.dart';
-import 'package:busmapcantho/data/repositories/favorite_route_repository.dart';
-import 'package:busmapcantho/data/repositories/user_favorite_repository.dart';
+import 'package:busmapcantho/domain/usecases/favorite/add_favorite_route_usecase.dart';
+import 'package:busmapcantho/domain/usecases/favorite/add_favorite_stop_usecase.dart';
+import 'package:busmapcantho/domain/usecases/favorite/get_favorite_routes_usecase.dart';
+import 'package:busmapcantho/domain/usecases/favorite/get_favorite_stops_usecase.dart';
+import 'package:busmapcantho/domain/usecases/favorite/remove_favorite_usecase.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
@@ -10,11 +12,19 @@ part 'favorites_state.dart';
 
 @injectable
 class FavoritesCubit extends Cubit<FavoritesState> {
-  final FavoriteRouteRepository _favoriteRouteRepository;
-  final UserFavoriteRepository _userFavoriteRepository;
+  final GetFavoriteRoutesUseCase _getFavoriteRoutesUseCase;
+  final GetFavoriteStopsUseCase _getFavoriteStopsUseCase;
+  final AddFavoriteRouteUseCase _addFavoriteRouteUseCase;
+  final AddFavoriteStopUseCase _addFavoriteStopUseCase;
+  final RemoveFavoriteUseCase _removeFavoriteUseCase;
 
-  FavoritesCubit(this._favoriteRouteRepository, this._userFavoriteRepository)
-    : super(const FavoritesState());
+  FavoritesCubit(
+    this._getFavoriteRoutesUseCase,
+    this._getFavoriteStopsUseCase,
+    this._addFavoriteRouteUseCase,
+    this._addFavoriteStopUseCase,
+    this._removeFavoriteUseCase,
+  ) : super(const FavoritesState());
 
   Future<void> loadAllFavorites() async {
     emit(
@@ -25,21 +35,16 @@ class FavoritesCubit extends Cubit<FavoritesState> {
         stopsError: null,
       ),
     );
-
     await Future.wait([loadFavoriteRoutes(), loadFavoriteStops()]);
   }
 
-  // Load only favorite routes
   Future<void> loadFavoriteRoutes() async {
-    if (state.isLoadingRoutes) return;
-
     emit(state.copyWith(isLoadingRoutes: true, routesError: null));
-
     try {
-      final routes = await _favoriteRouteRepository.getFavoriteRoutes();
+      final favoriteUserRoutes = await _getFavoriteRoutesUseCase();
       emit(
         state.copyWith(
-          favoriteRoutes: routes,
+          favoriteUserRoutes: favoriteUserRoutes,
           isLoadingRoutes: false,
           routesError: null,
         ),
@@ -50,12 +55,9 @@ class FavoritesCubit extends Cubit<FavoritesState> {
   }
 
   Future<void> loadFavoriteStops() async {
-    if (state.isLoadingStops) return;
-
     emit(state.copyWith(isLoadingStops: true, stopsError: null));
-
     try {
-      final stops = await _userFavoriteRepository.getFavorites();
+      final stops = await _getFavoriteStopsUseCase();
       emit(
         state.copyWith(
           favoriteStops: stops,
@@ -68,10 +70,9 @@ class FavoritesCubit extends Cubit<FavoritesState> {
     }
   }
 
-  // Add a route to favorites
-  Future<void> addFavoriteRoute(String routeId) async {
+  Future<void> addFavoriteRoute(String routeId, {String? label}) async {
     try {
-      await _favoriteRouteRepository.saveFavoriteRoute(routeId);
+      await _addFavoriteRouteUseCase(routeId: routeId, label: label);
       await loadFavoriteRoutes();
     } catch (e) {
       emit(state.copyWith(actionError: e.toString()));
@@ -79,33 +80,34 @@ class FavoritesCubit extends Cubit<FavoritesState> {
     }
   }
 
-  // Remove a route from favorites
-  Future<void> removeFavoriteRoute(String routeId) async {
+  Future<void> removeFavoriteRoute(String favoriteId) async {
     try {
-      await _favoriteRouteRepository.removeFavoriteRoute(routeId);
+      await _removeFavoriteUseCase(favoriteId);
       await loadFavoriteRoutes();
     } catch (e) {
       emit(state.copyWith(actionError: e.toString()));
     }
   }
 
-  // Check if a route is favorited
   bool isRouteFavorite(String routeId) {
-    return state.favoriteRoutes.any((route) => route.id == routeId);
+    return state.favoriteUserRoutes.any(
+      (favorite) => favorite.routeId == routeId,
+    );
   }
 
-  // Add a stop to favorites
+  String? getFavoriteIdForRoute(String routeId) {
+    final matching = state.favoriteUserRoutes.where(
+      (f) => f.routeId == routeId,
+    );
+    return matching.isNotEmpty ? matching.first.id : null;
+  }
+
   Future<void> addFavoriteStop({
     required String stopId,
     required String label,
-    String type = 'stop',
   }) async {
     try {
-      await _userFavoriteRepository.addFavorite(
-        stopId: stopId,
-        label: label,
-        type: type,
-      );
+      await _addFavoriteStopUseCase(stopId: stopId, label: label);
       await loadFavoriteStops();
     } catch (e) {
       emit(state.copyWith(actionError: e.toString()));
@@ -113,28 +115,21 @@ class FavoritesCubit extends Cubit<FavoritesState> {
     }
   }
 
-  // Remove a stop from favorites
   Future<void> removeFavoriteStop(String favoriteId) async {
     try {
-      await _userFavoriteRepository.removeFavorite(favoriteId);
+      await _removeFavoriteUseCase(favoriteId);
       await loadFavoriteStops();
     } catch (e) {
       emit(state.copyWith(actionError: e.toString()));
     }
   }
 
-  // Check if a stop is favorited
   bool isStopFavorite(String stopId) {
     return state.favoriteStops.any((favorite) => favorite.stopId == stopId);
   }
 
-  // Get favorite ID for a stop if it exists
   String? getFavoriteIdForStop(String stopId) {
-    final favorite = state.favoriteStops
-        .where((f) => f.stopId == stopId)
-        .cast<UserFavorite?>()
-        .firstWhere((f) => f != null, orElse: () => null);
-    return favorite?.id;
+    final matching = state.favoriteStops.where((f) => f.stopId == stopId);
+    return matching.isNotEmpty ? matching.first.id : null;
   }
 }
-

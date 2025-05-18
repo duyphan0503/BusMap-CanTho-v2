@@ -12,8 +12,26 @@ class AuthRemoteDatasource {
   AuthRemoteDatasource([SupabaseClient? client])
     : _client = client ?? Supabase.instance.client;
 
-  // No longer needed as we're using the built-in auth.users table
-  // void initAuthListener() { ... }
+  /// Gọi hàm này ở main() hoặc khi khởi tạo app để đảm bảo đồng bộ users
+  void initAuthListener() {
+    _client.auth.onAuthStateChange.listen((data) async {
+      final event = data.event;
+      final session = data.session;
+      final user = session?.user;
+      if (user != null &&
+          (event == AuthChangeEvent.signedIn ||
+              event == AuthChangeEvent.userUpdated)) {
+        final fullName = user.userMetadata?['full_name'] as String? ?? '';
+        final avatarUrl = user.userMetadata?['avatar_url'] as String? ?? '';
+        await _client.from('users').upsert({
+          'id': user.id,
+          'email': user.email,
+          'full_name': fullName,
+          'avatar_url': avatarUrl,
+        }, onConflict: 'id');
+      }
+    });
+  }
 
   Future<AuthResponse> signInWithEmail(String email, String password) async {
     try {
@@ -44,7 +62,6 @@ class AuthRemoteDatasource {
       if (response.user == null) {
         throw Exception('Failed to sign up - no user returned');
       }
-
       return response;
     } on AuthException catch (e) {
       if (e.message.toLowerCase().contains('already registered')) {

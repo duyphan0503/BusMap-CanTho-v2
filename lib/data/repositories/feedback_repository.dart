@@ -5,23 +5,34 @@ import '../model/feedback.dart';
 
 @lazySingleton
 class FeedbackRepository {
-  final FeedbackRemoteDatasource _remoteDatasource;
+  final FeedbackRemoteDatasource _remote;
 
-  FeedbackRepository(this._remoteDatasource);
+  FeedbackRepository(this._remote);
 
-  // Submit feedback (current authenticated user)
-  Future<void> submitFeedback(String content) {
-    return _remoteDatasource.submitFeedback(content);
-  }
+  Future<void> submitFeedback({
+    required String routeId,
+    required int rating,
+    String? content,
+  }) => _remote.submitFeedback(
+    routeId: routeId,
+    rating: rating,
+    content: content,
+  );
 
-  // Only for admin users
-  Future<List<FeedbackModel>> getAllFeedback() {
-    return _remoteDatasource.getAllFeedback();
-  }
-  
-  // This method is deprecated as it requires auth now
-  Future<List<FeedbackModel>> getFeedbacksByUser(String userId) async {
-    // Current user ID is automatically used from auth
-    throw UnimplementedError('Use getAllFeedback() with admin role instead');
-  }
+  Future<void> updateFeedback({
+    required String feedbackId,
+    required int rating,
+    String? content,
+  }) => _remote.updateFeedback(
+    feedbackId: feedbackId,
+    rating: rating,
+    content: content,
+  );
+
+  Future<List<FeedbackModel>> getFeedbacksByRouteExcludingCurrentUser(
+    String routeId,
+  ) => _remote.getFeedbacksByRouteExcludingCurrentUser(routeId);
+
+  Future<FeedbackModel?> getCurrentUserFeedbackForRoute(String routeId) =>
+      _remote.getCurrentUserFeedbackForRoute(routeId);
 }

@@ -44,7 +44,7 @@ class AuthCubit extends Cubit<AuthState> {
     emit(AuthLoading());
     try {
       await _signUpUseCase(email, password, fullName);
-      emit(AuthUnauthenticated());
+      emit(AuthVerifying());
     } catch (e) {
       emit(AuthError(e.toString()));
     }

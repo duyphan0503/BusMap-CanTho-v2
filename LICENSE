@@ -19,3 +19,57 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+XPW8+P5 Phong Điền, Cần Thơ, Việt Nam
+XPX8+5F Phong Điền, Cần Thơ, Việt Nam
+XPX8+JQ Phong Điền, Cần Thơ, Việt Nam
+2P29+97 Phong Điền, Cần Thơ, Việt Nam
+2P3C+98 Phong Điền, Cần Thơ, Việt Nam
+2P3F+X9 Ninh Kiều, Cần Thơ, Việt Nam
+2P4G+F5 Ninh Kiều, Cần Thơ, Việt Nam
+2P4G+VM Ninh Kiều, Cần Thơ, Việt Nam
+2P5H+F9 Ninh Kiều, Cần Thơ, Việt Nam
+2P6H+2X Ninh Kiều, Cần Thơ, Việt Nam
+2P7M+FM Ninh Kiều, Cần Thơ, Việt Nam
+2P7P+V5 Ninh Kiều, Cần Thơ, Việt Nam
+2P8P+8P Ninh Kiều, Cần Thơ, Việt Nam
+2P8Q+Q6 Ninh Kiều, Cần Thơ, Việt Nam
+2PCV+C2 Ninh Kiều, Cần Thơ, Việt Nam
+2PFV+6Q Ninh Kiều, Cần Thơ, Việt Nam
+2PFV+CX Ninh Kiều, Cần Thơ, Việt Nam
+2PGW+2J Ninh Kiều, Cần Thơ, Việt Nam
+2PGX+G4 Ninh Kiều, Cần Thơ, Việt Nam
+2PGX+VF Ninh Kiều, Cần Thơ, Việt Nam
+2QH2+Q9 Ninh Kiều, Cần Thơ, Việt Nam
+2QJ2+3M Ninh Kiều, Cần Thơ, Việt Nam
+2QJ3+F4 Ninh Kiều, Cần Thơ, Việt Nam
+2QM3+4Q Ninh Kiều, Cần Thơ, Việt Nam
+2QM4+J7 Ninh Kiều, Cần Thơ, Việt Nam
+BV Trường ĐHYD CT
+Chợ Mỹ Khánh
+INSERT INTO public.stops (id, name, latitude, longitude, address, stop_code) VALUES
+('11111111-1111-1111-1111-111111111111', 'Chợ Mỹ Khánh', 9.9968125, 105.7154375, 'Mỹ Khánh, Phong Điền, Cần Thơ, Việt Nam', 'PCODE_XPW8P5'),
+('22222222-2222-2222-2222-222222222222', 'Trạm XPX8+5F', 9.9978125, 105.7161875, 'XPX8+5F Phong Điền, Cần Thơ', 'PCODE_XPX85F'),
+('33333333-3333-3333-3333-333333333333', 'Trạm XPX8+JQ', 9.9984375, 105.7169375, 'XPX8+JQ Phong Điền, Cần Thơ', 'PCODE_XPX8JQ'),
+('44444444-4444-4444-4444-444444444444', 'Trạm 2P29+97', 10.0009375, 105.7181875, '2P29+97 Phong Điền, Cần Thơ', 'PCODE_2P2997'),
+('55555555-5555-5555-5555-555555555555', 'Trạm 2P3C+98', 10.0034375, 105.7208125, '2P3C+98 Phong Điền, Cần Thơ', 'PCODE_2P3C98'),
+('66666666-6666-6666-6666-666666666666', 'Trạm 2P3F+X9', 10.0049375, 105.7234375, '2P3F+X9 Ninh Kiều, Cần Thơ', 'PCODE_2P3FX9'),
+('77777777-7777-7777-7777-777777777777', 'Trạm 2P4G+F5', 10.0061875, 105.7254375, '2P4G+F5 Ninh Kiều, Cần Thơ', 'PCODE_2P4GF5'),
+('88888888-8888-8888-8888-888888888888', 'Trạm 2P4G+VM', 10.0071875, 105.7266875, '2P4G+VM Ninh Kiều, Cần Thơ', 'PCODE_2P4GVM'),
+('99999999-9999-9999-9999-999999999999', 'Trạm 2P5H+F9', 10.0086875, 105.7284375, '2P5H+F9 Ninh Kiều, Cần Thơ', 'PCODE_2P5HF9'),
+('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Trạm 2P6H+2X', 10.0100625, 105.7299375, '2P6H+2X Ninh Kiều, Cần Thơ', 'PCODE_2P6H2X'),
+('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Trạm 2P7M+FM', 10.0136875, 105.7341875, '2P7M+FM Ninh Kiều, Cần Thơ', 'PCODE_2P7MFM'),
+('cccccccc-cccc-cccc-cccc-cccccccccccc', 'Trạm 2P7P+V5', 10.0146875, 105.7354375, '2P7P+V5 Ninh Kiều, Cần Thơ', 'PCODE_2P7PV5'),
+('dddddddd-dddd-dddd-dddd-dddddddddddd', 'Trạm 2P8P+8P', 10.0158125, 105.7368125, '2P8P+8P Ninh Kiều, Cần Thơ', 'PCODE_2P8P8P'),
+('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'Trạm 2P8Q+Q6', 10.0169375, 105.7380625, '2P8Q+Q6 Ninh Kiều, Cần Thơ', 'PCODE_2P8QQ6'),
+('ffffffff-ffff-ffff-ffff-ffffffffffff', 'Trạm 2PCV+C2', 10.0210625, 105.7425625, '2PCV+C2 Ninh Kiều, Cần Thơ', 'PCODE_2PCVC2'),
+('10101010-1010-1010-1010-101010101010', 'Trạm 2PFV+6Q', 10.0230625, 105.7444375, '2PFV+6Q Ninh Kiều, Cần Thơ', 'PCODE_2PFV6Q'),
+('12121212-1212-1212-1212-121212121212', 'Trạm 2PFV+CX', 10.0235625, 105.7449375, '2PFV+CX Ninh Kiều, Cần Thơ', 'PCODE_2PFVCX'),
+('13131313-1313-1313-1313-131313131313', 'Trạm 2PGW+2J', 10.0250625, 105.7465625, '2PGW+2J Ninh Kiều, Cần Thơ', 'PCODE_2PGW2J'),
+('14141414-1414-1414-1414-141414141414', 'Trạm 2PGX+G4', 10.0263125, 105.7478125, '2PGX+G4 Ninh Kiều, Cần Thơ', 'PCODE_2PGXG4'),
+('15151515-1515-1515-1515-151515151515', 'Trạm 2PGX+VF', 10.0271875, 105.7486875, '2PGX+VF Ninh Kiều, Cần Thơ', 'PCODE_2PGXVF'),
+('16161616-1616-1616-1616-161616161616', 'Trạm 2QH2+Q9', 10.0294375, 105.7509375, '2QH2+Q9 Ninh Kiều, Cần Thơ', 'PCODE_2QH2Q9'),
+('17171717-1717-1717-1717-171717171717', 'Trạm 2QJ2+3M', 10.0301875, 105.7516875, '2QJ2+3M Ninh Kiều, Cần Thơ', 'PCODE_2QJ23M'),
+('18181818-1818-1818-1818-181818181818', 'Trạm 2QJ3+F4', 10.0311875, 105.7528125, '2QJ3+F4 Ninh Kiều, Cần Thơ', 'PCODE_2QJ3F4'),
+('19191919-1919-1919-1919-191919191919', 'Trạm 2QM3+4Q', 10.0328125, 105.7544375, '2QM3+4Q Ninh Kiều, Cần Thơ', 'PCODE_2QM34Q'),
+('20202020-2020-2020-2020-202020202020', 'BV Trường ĐHYD CT', 10.0334375, 105.7556875, 'An Khánh, Ninh Kiều, Cần Thơ, Việt Nam', 'PCODE_2QM4J7');

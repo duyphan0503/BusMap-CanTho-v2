@@ -193,6 +193,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.3"
+  cli_util:
+    dependency: transitive
+    description:
+      name: cli_util
+      sha256: ff6785f7e9e3c38ac98b2fb035701789de90154024a75b6cb926445e83197d1c
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.2"
   clock:
     dependency: transitive
     description:
@@ -305,6 +313,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.2.0"
+  dbus:
+    dependency: transitive
+    description:
+      name: dbus
+      sha256: "79e0c23480ff85dc68de79e2cd6334add97e48f7f4865d17686dd6ea81a47e8c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.7.11"
   easy_localization:
     dependency: "direct main"
     description:
@@ -417,6 +433,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
+  flat_buffers:
+    dependency: transitive
+    description:
+      name: flat_buffers
+      sha256: "380bdcba5664a718bfd4ea20a45d39e13684f5318fcd8883066a55e21f37f4c3"
+      url: "https://pub.dev"
+    source: hosted
+    version: "23.5.26"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -462,6 +486,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.10.0"
+  flutter_launcher_icons:
+    dependency: "direct dev"
+    description:
+      name: flutter_launcher_icons
+      sha256: bfa04787c85d80ecb3f8777bde5fc10c3de809240c48fa061a2c2bf15ea5211c
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.14.3"
   flutter_lints:
     dependency: "direct dev"
     description:
@@ -470,6 +502,38 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.0.0"
+  flutter_local_notifications:
+    dependency: "direct main"
+    description:
+      name: flutter_local_notifications
+      sha256: ebc86e2ff6a9ca5bc1943e675fef02b5ddaa1a99b4ef980cac576fcfc65959aa
+      url: "https://pub.dev"
+    source: hosted
+    version: "19.2.0"
+  flutter_local_notifications_linux:
+    dependency: transitive
+    description:
+      name: flutter_local_notifications_linux
+      sha256: e3c277b2daab8e36ac5a6820536668d07e83851aeeb79c446e525a70710770a5
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.0.0"
+  flutter_local_notifications_platform_interface:
+    dependency: transitive
+    description:
+      name: flutter_local_notifications_platform_interface
+      sha256: "2569b973fc9d1f63a37410a9f7c1c552081226c597190cb359ef5d5762d1631c"
+      url: "https://pub.dev"
+    source: hosted
+    version: "9.0.0"
+  flutter_local_notifications_windows:
+    dependency: transitive
+    description:
+      name: flutter_local_notifications_windows
+      sha256: f8fc0652a601f83419d623c85723a3e82ad81f92b33eaa9bcc21ea1b94773e6e
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.0"
   flutter_localizations:
     dependency: transitive
     description: flutter
@@ -499,6 +563,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "10.1.0"
+  flutter_map_tile_caching:
+    dependency: "direct main"
+    description:
+      name: flutter_map_tile_caching
+      sha256: "90e097223d8ab74425cf15b449a03adfa4d4c28406dc757e1c396aff0f9beba7"
+      url: "https://pub.dev"
+    source: hosted
+    version: "10.1.1"
   flutter_plugin_android_lifecycle:
     dependency: transitive
     description:
@@ -507,6 +579,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.0.27"
+  flutter_rating_bar:
+    dependency: "direct main"
+    description:
+      name: flutter_rating_bar
+      sha256: d2af03469eac832c591a1eba47c91ecc871fe5708e69967073c043b2d775ed93
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.0.1"
+  flutter_rating_stars:
+    dependency: "direct main"
+    description:
+      name: flutter_rating_stars
+      sha256: "09dfa831aac2e5128fe70c5a8bd63ff4463180d5ff8545f7379c5b209d22ce1d"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.1.0"
   flutter_rotation_sensor:
     dependency: transitive
     description:
@@ -789,6 +877,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "4.1.2"
+  image:
+    dependency: transitive
+    description:
+      name: image
+      sha256: "4e973fcf4caae1a4be2fa0a13157aa38a8f9cb049db6529aa00b4d71abc4d928"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.5.4"
   image_picker:
     dependency: "direct main"
     description:
@@ -1053,6 +1149,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.0.0"
+  objectbox:
+    dependency: transitive
+    description:
+      name: objectbox
+      sha256: a07f93ea6b6a7c6cfe2efce743e12842ccd876d92dc6b6da532cc5221c507ef0
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.2.0"
+  objectbox_flutter_libs:
+    dependency: transitive
+    description:
+      name: objectbox_flutter_libs
+      sha256: "43b2b86b61aa4a6ef9e3b44d3cc09471586975d100c6620ef22960e490c9bcd5"
+      url: "https://pub.dev"
+    source: hosted
+    version: "4.2.0"
   octo_image:
     dependency: transitive
     description:
@@ -1538,6 +1650,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "2.1.5"
+  timezone:
+    dependency: transitive
+    description:
+      name: timezone
+      sha256: dd14a3b83cfd7cb19e7888f1cbc20f258b8d71b54c06f79ac585f14093a287d1
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.10.1"
   timing:
     dependency: transitive
     description:

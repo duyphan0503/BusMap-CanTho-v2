@@ -8,7 +8,7 @@ class SearchHistoryRemoteDatasource {
   final SupabaseClient _client;
 
   SearchHistoryRemoteDatasource([SupabaseClient? client])
-      : _client = client ?? Supabase.instance.client;
+    : _client = client ?? Supabase.instance.client;
 
   Future<List<SearchHistory>> getSearchHistory() async {
     try {
@@ -23,7 +23,7 @@ class SearchHistoryRemoteDatasource {
           .eq('user_id', user.id)
           .order('searched_at', ascending: false)
           .limit(20);
-      
+
       return response.map((data) => SearchHistory.fromJson(data)).toList();
     } catch (e) {
       throw Exception('Failed to load search history: $e');
@@ -53,10 +53,7 @@ class SearchHistoryRemoteDatasource {
         return; // Do nothing if user not logged in
       }
 
-      await _client
-          .from('search_history')
-          .delete()
-          .eq('user_id', user.id);
+      await _client.from('search_history').delete().eq('user_id', user.id);
     } catch (e) {
       throw Exception('Failed to clear search history: $e');
     }

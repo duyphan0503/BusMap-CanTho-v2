@@ -1,4 +1,3 @@
-import '../../../data/model/notification.dart';
 import '../../../data/repositories/notification_repository.dart';
 
 class SendNotificationUseCase {

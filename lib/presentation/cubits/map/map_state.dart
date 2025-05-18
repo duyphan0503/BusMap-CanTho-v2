@@ -13,30 +13,30 @@ class MapLoading extends MapState {}
 
 class MapLoaded extends MapState {
   final LatLng currentPosition;
-  final List<BusStop> nearbyStops;
+  final List<BusStop> allStops;
   final BusStop? selectedStop;
 
   const MapLoaded({
     required this.currentPosition,
-    required this.nearbyStops,
+    required this.allStops,
     this.selectedStop,
   });
 
   MapLoaded copyWith({
     LatLng? currentPosition,
-    List<BusStop>? nearbyStops,
+    List<BusStop>? allStops,
     BusStop? selectedStop,
-    bool clearSelectedStop = false,
+    bool clearSelected = false,
   }) {
     return MapLoaded(
       currentPosition: currentPosition ?? this.currentPosition,
-      nearbyStops: nearbyStops ?? this.nearbyStops,
-      selectedStop: clearSelectedStop ? null : (selectedStop ?? this.selectedStop),
+      allStops: allStops ?? this.allStops,
+      selectedStop: clearSelected ? null : (selectedStop ?? this.selectedStop),
     );
   }
 
   @override
-  List<Object?> get props => [currentPosition, nearbyStops, selectedStop];
+  List<Object?> get props => [currentPosition, allStops, selectedStop];
 }
 
 class MapError extends MapState {
@@ -45,5 +45,5 @@ class MapError extends MapState {
   const MapError(this.message);
 
   @override
-  List<Object> get props => [message];
+  List<Object?> get props => [message];
 }

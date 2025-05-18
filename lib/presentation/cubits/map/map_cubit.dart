@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:busmapcantho/data/model/bus_stop.dart';
 import 'package:busmapcantho/data/repositories/bus_stop_repository.dart';
 import 'package:equatable/equatable.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:injectable/injectable.dart';
@@ -22,136 +21,88 @@ class MapCubit extends Cubit<MapState> {
   @override
   Future<void> close() {
     _isClosed = true;
-    _cancelPositionStream();
+    _positionStream?.cancel();
     return super.close();
   }
 
-  void _cancelPositionStream() {
-    _positionStream?.cancel();
-    _positionStream = null;
+  Future<bool> _checkLocationPermission() async {
+    if (!await Geolocator.isLocationServiceEnabled()) {
+      if (!_isClosed) emit(MapError('Location services are disabled.'));
+      return false;
+    }
+    var p = await Geolocator.checkPermission();
+    if (p == LocationPermission.denied) {
+      p = await Geolocator.requestPermission();
+      if (p == LocationPermission.denied) {
+        if (!_isClosed) emit(MapError('Location permissions are denied.'));
+        return false;
+      }
+    }
+    if (p == LocationPermission.deniedForever) {
+      if (!_isClosed) {
+        emit(MapError('Location permissions permanently denied.'));
+      }
+      return false;
+    }
+    return true;
   }
 
   Future<void> initialize() async {
     emit(MapLoading());
-    
+
     try {
-      // Check location permissions first
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        if (!_isClosed) emit(MapError('Location services are disabled.'));
-        return;
-      }
+      if (!await _checkLocationPermission()) return;
 
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) {
-          if (!_isClosed) emit(MapError('Location permissions are denied.'));
-          return;
-        }
-      }
-      
-      if (permission == LocationPermission.deniedForever) {
-        if (!_isClosed) {
-          emit(MapError(
-            'Location permissions are permanently denied, we cannot request permissions.',
-          ));
-        }
-        return;
-      }
+      // 1. Load tất cả stop
+      final stops = await _busStopRepository.getAllBusStops();
 
-      // Cancel any existing stream before creating a new one
-      _cancelPositionStream();
+      // 2. Lấy vị trí hiện tại
+      final pos = await Geolocator.getCurrentPosition();
 
-      // Get current position once
-      final position = await Geolocator.getCurrentPosition();
-      final nearbyStops = await _loadNearbyStops(
-        position.latitude,
-        position.longitude,
-      );
-      
       if (!_isClosed) {
-        _emitSuccess(
-          position.latitude,
-          position.longitude,
-          nearbyStops,
+        emit(
+          MapLoaded(
+            currentPosition: LatLng(pos.latitude, pos.longitude),
+            allStops: stops,
+          ),
         );
       }
 
-      // Start listening to position updates
+      // 3. Listen vị trí
       _positionStream = Geolocator.getPositionStream().listen(
-        (Position position) async {
+        (newPos) {
           if (_isClosed) return;
-          
-          try {
-            final nearbyStops = await _loadNearbyStops(
-              position.latitude,
-              position.longitude,
+          final s = state;
+          if (s is MapLoaded) {
+            emit(
+              s.copyWith(
+                currentPosition: LatLng(newPos.latitude, newPos.longitude),
+              ),
             );
-            
-            if (!_isClosed) {
-              _emitSuccess(
-                position.latitude,
-                position.longitude,
-                nearbyStops,
-              );
-            }
-          } catch (e) {
-            if (!_isClosed) {
-              emit(MapError('Error fetching nearby stops: $e'));
-            }
           }
         },
-        onError: (error) {
-          if (!_isClosed) {
-            emit(MapError('Location stream error: $error'));
-          }
+        onError: (e) {
+          if (!_isClosed) emit(MapError('Location stream error: $e'));
         },
       );
     } catch (e) {
-      if (!_isClosed) {
-        emit(MapError('Error initializing map: $e'));
-      }
-    }
-  }
-
-  void _emitSuccess(
-    double latitude,
-    double longitude,
-    List<BusStop> nearbyStops,
-  ) {
-    if (!_isClosed) {
-      emit(MapLoaded(
-        currentPosition: LatLng(latitude, longitude),
-        nearbyStops: nearbyStops,
-      ));
-    }
-  }
-
-  Future<List<BusStop>> _loadNearbyStops(double lat, double lng) async {
-    try {
-      return await _busStopRepository.getNearbyBusStops(lat, lng, 1000);
-    } catch (e) {
-      debugPrint('Error loading nearby stops: $e');
-      return [];
+      if (!_isClosed) emit(MapError('Error initializing map: $e'));
     }
   }
 
   void selectBusStop(BusStop stop) {
     if (_isClosed) return;
-    
-    final currentState = state;
-    if (currentState is MapLoaded) {
-      emit(currentState.copyWith(selectedStop: stop));
+    final s = state;
+    if (s is MapLoaded) {
+      emit(s.copyWith(selectedStop: stop));
     }
   }
 
   void clearSelectedBusStop() {
     if (_isClosed) return;
-    
-    final currentState = state;
-    if (currentState is MapLoaded) {
-      emit(currentState.copyWith(selectedStop: null));
+    final s = state;
+    if (s is MapLoaded) {
+      emit(s.copyWith(clearSelected: true));
     }
   }
 }

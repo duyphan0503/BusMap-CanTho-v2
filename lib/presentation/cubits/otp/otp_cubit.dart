@@ -1,8 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:injectable/injectable.dart';
 
 import '../../../domain/usecases/auth/verify_email_otp_usecase.dart';
 import 'otp_state.dart';
 
+@injectable
 class OtpCubit extends Cubit<OtpState> {
   final VerifyEmailOtpUseCase _verifyEmailOtpUseCase;
 

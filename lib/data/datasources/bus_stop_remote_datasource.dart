@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -68,6 +69,7 @@ class BusStopRemoteDatasource {
 
       return response.map((data) => BusStop.fromJson(data)).toList();
     } catch (e) {
+      debugPrint('Error getting nearby bus stops: $e');
       throw Exception('Failed to get nearby bus stops: $e');
     }
   }

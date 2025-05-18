@@ -9,21 +9,45 @@ class UserFavoriteRepository {
 
   UserFavoriteRepository(this._remoteDatasource);
 
-  // Get all favorites for the current authenticated user
-  Future<List<UserFavorite>> getFavorites() {
-    return _remoteDatasource.getFavorites();
+  // Get all favorite stops for the current authenticated user
+  Future<List<UserFavorite>> getFavoriteStops() {
+    return _remoteDatasource.getFavorites(type: 'stop');
+  }
+
+  // Get all favorite routes for the current authenticated user
+  Future<List<UserFavorite>> getFavoriteRoutes() {
+    return _remoteDatasource.getFavorites(type: 'route');
   }
 
   // Add a stop as favorite for the current authenticated user
-  Future<UserFavorite> addFavorite({
+  Future<UserFavorite> addFavoriteStop({
     required String stopId,
     required String label,
-    required String type,
   }) {
     return _remoteDatasource.addFavorite(
       stopId: stopId,
       label: label,
-      type: type,
+      type: 'stop',
+    );
+  }
+
+  // Add a route as favorite for the current authenticated user
+  Future<UserFavorite?> addFavoriteRoute({
+    required String routeId,
+    String? label,
+  }) async {
+    // Check if already exists
+    final existing = (await getFavoriteRoutes())
+        .where((fav) => fav.routeId == routeId)
+        .toList();
+    if (existing.isNotEmpty) {
+      // Already exists, do not add duplicate
+      return null;
+    }
+    return _remoteDatasource.addFavorite(
+      routeId: routeId,
+      label: label ?? '',
+      type: 'route',
     );
   }
 

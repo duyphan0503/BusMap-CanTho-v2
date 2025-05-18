@@ -1,8 +1,10 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:injectable/injectable.dart';
 import 'package:latlong2/latlong.dart';
 
+@injectable
 class DirectionsService {
   Future<DirectionsResult?> getDirections(LatLng start, LatLng end) async {
     final url = Uri.parse(

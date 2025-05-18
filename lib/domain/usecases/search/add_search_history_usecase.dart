@@ -1,4 +1,3 @@
-import '../../../data/model/search_history.dart';
 import '../../../data/repositories/search_history_repository.dart';
 
 class AddSearchHistoryUseCase {

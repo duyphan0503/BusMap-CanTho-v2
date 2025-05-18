@@ -1,6 +1,7 @@
 import 'package:busmapcantho/core/utils/validators.dart';
 import 'package:busmapcantho/presentation/cubits/auth/auth_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/auth/auth_state.dart';
+import 'package:busmapcantho/services/notification_service.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -108,11 +109,11 @@ class SignUpScreenState extends State<SignUpScreen> {
               const SizedBox(height: 24),
               BlocConsumer<AuthCubit, AuthState>(
                 listener: (context, state) {
-                  if (state is AuthAuthenticated) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('signUpSuccess'.tr())),
+                  if (state is AuthVerifying) {
+                    NotificationService.showSuccess(
+                      'verificationEmailSentMessage'.tr(),
                     );
-                    context.push(
+                    context.go(
                       AppRoutes.verify,
                       extra: {"email": _emailController.text},
                     );

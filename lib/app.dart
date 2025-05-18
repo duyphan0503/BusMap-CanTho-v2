@@ -1,10 +1,13 @@
 import 'package:busmapcantho/core/theme/app_theme.dart';
 import 'package:busmapcantho/presentation/cubits/account/account_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/auth/auth_cubit.dart';
+import 'package:busmapcantho/presentation/cubits/bus_location/bus_location_cubit.dart';
+import 'package:busmapcantho/presentation/cubits/bus_routes/routes_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/directions/directions_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/favorites/favorites_cubit.dart';
+import 'package:busmapcantho/presentation/cubits/feedback/feedback_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/map/map_cubit.dart';
-import 'package:busmapcantho/presentation/cubits/routes/routes_cubit.dart';
+import 'package:busmapcantho/presentation/cubits/otp/otp_cubit.dart';
 import 'package:busmapcantho/presentation/routes/app_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -30,6 +33,11 @@ class _BusMapCanThoAppState extends State<BusMapCanThoApp> {
         BlocProvider<FavoritesCubit>(create: (_) => getIt<FavoritesCubit>()),
         BlocProvider<MapCubit>(create: (_) => getIt<MapCubit>()),
         BlocProvider<DirectionsCubit>(create: (_) => getIt<DirectionsCubit>()),
+        BlocProvider<FeedbackCubit>(create: (_) => getIt<FeedbackCubit>()),
+        BlocProvider<OtpCubit>(create: (_) => getIt<OtpCubit>()),
+        BlocProvider<BusLocationCubit>(
+          create: (_) => getIt<BusLocationCubit>(),
+        ),
       ],
       child: MaterialApp.router(
         title: 'appTitle'.tr(),

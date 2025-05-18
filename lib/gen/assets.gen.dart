@@ -12,15 +12,21 @@ import 'package:flutter/widgets.dart';
 class $AssetsAnimationsGen {
   const $AssetsAnimationsGen();
 
+  /// File path: assets/animations/bus.gif
+  AssetGenImage get bus => const AssetGenImage('assets/animations/bus.gif');
+
   /// File path: assets/animations/bus_animation.json
   String get busAnimation => 'assets/animations/bus_animation.json';
 
   /// List of all assets
-  List<String> get values => [busAnimation];
+  List<dynamic> get values => [bus, busAnimation];
 }
 
 class $AssetsImagesGen {
   const $AssetsImagesGen();
+
+  /// File path: assets/images/bus.png
+  AssetGenImage get bus => const AssetGenImage('assets/images/bus.png');
 
   /// File path: assets/images/bus_stops.png
   AssetGenImage get busStops =>
@@ -38,7 +44,13 @@ class $AssetsImagesGen {
       const AssetGenImage('assets/images/my_location.png');
 
   /// List of all assets
-  List<AssetGenImage> get values => [busStops, defaultAvatar, logo, myLocation];
+  List<AssetGenImage> get values => [
+    bus,
+    busStops,
+    defaultAvatar,
+    logo,
+    myLocation,
+  ];
 }
 
 class $AssetsTranslationsGen {

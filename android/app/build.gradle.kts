@@ -4,9 +4,7 @@ import java.util.Properties
 
 plugins {
     id("com.android.application")
-    // START: FlutterFire Configuration
     id("com.google.gms.google-services")
-    id("com.google.firebase.crashlytics")
     // END: FlutterFire Configuration
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -25,20 +23,11 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
         jvmTarget = JavaVersion.VERSION_11.toString()
-    }
-
-    val env = Properties()
-    val envFile = file("src/main/assets/.env")
-    if (envFile.exists()) {
-        FileInputStream(envFile).use { stream ->
-            env.load(stream)
-        }
-    } else {
-        throw GradleException("File .env not found at android/app/src/main/assets/.env")
     }
 
     defaultConfig {
@@ -50,10 +39,6 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-
-        manifestPlaceholders["GOOGLE_MAPS_KEY"] = env.getProperty("GOOGLE_MAPS_KEY", "")
-
-        buildConfigField("String", "GOOGLE_MAPS_KEY", "\"${env.getProperty("GOOGLE_MAPS_KEY", "")}\"")
     }
 
     buildTypes {
@@ -79,4 +64,5 @@ dependencies {
     implementation("io.ktor:ktor-client-okhttp:3.1.2")
     implementation("io.ktor:ktor-client-content-negotiation:3.1.2")
     implementation("io.ktor:ktor-serialization-kotlinx-json:3.1.2")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }

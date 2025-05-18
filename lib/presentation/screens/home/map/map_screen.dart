@@ -2,7 +2,7 @@ import 'package:busmapcantho/core/di/injection.dart';
 import 'package:busmapcantho/data/repositories/bus_stop_repository.dart';
 import 'package:busmapcantho/presentation/cubits/map/map_cubit.dart';
 import 'package:busmapcantho/presentation/widgets/bus_map_widget.dart';
-import 'package:easy_localization/easy_localization.dart';
+import 'package:busmapcantho/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart' as osm;
@@ -37,6 +37,7 @@ class _MapScreenState extends State<MapScreen>
     setState(() => _isLoadingAllStops = true);
     try {
       final stops = await _busStopRepository.getAllBusStops();
+      if (!mounted) return;
       setState(() {
         _allStops = stops;
         _isLoadingAllStops = false;
@@ -44,12 +45,7 @@ class _MapScreenState extends State<MapScreen>
     } catch (e) {
       setState(() => _isLoadingAllStops = false);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('errorLoadingAllStops'.tr()),
-            backgroundColor: Colors.red,
-          ),
-        );
+        NotificationService.showError('errorLoadingAllStops');
       }
     }
   }

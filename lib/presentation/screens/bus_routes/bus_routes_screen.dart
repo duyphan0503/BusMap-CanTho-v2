@@ -1,14 +1,14 @@
-import 'package:busmapcantho/core/di/injection.dart';
 import 'package:busmapcantho/data/model/bus_route.dart';
-import 'package:busmapcantho/presentation/cubits/favorites/favorites_cubit.dart';
+import 'package:busmapcantho/presentation/screens/bus_routes/route_detail_map_screen.dart';
 import 'package:busmapcantho/presentation/widgets/route_card_widget.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 
-import '../../cubits/routes/routes_cubit.dart';
-import '../../routes/app_routes.dart';
+import '../../../core/di/injection.dart';
+import '../../cubits/bus_location/bus_location_cubit.dart';
+import '../../cubits/bus_routes/routes_cubit.dart';
+import '../../cubits/favorites/favorites_cubit.dart';
 
 class BusRoutesScreen extends StatefulWidget {
   const BusRoutesScreen({super.key});
@@ -20,37 +20,34 @@ class BusRoutesScreen extends StatefulWidget {
 class _BusRoutesScreenState extends State<BusRoutesScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late final RoutesCubit _routesCubit;
+  late final FavoritesCubit _favoritesCubit;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  late FavoritesCubit _favoritesCubit;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
     _tabController.addListener(_handleTabChange);
-    _favoritesCubit = getIt<FavoritesCubit>();
-
-    // Load data when screen initializes
+    _routesCubit = context.read<RoutesCubit>();
+    _favoritesCubit = context.read<FavoritesCubit>();
     _loadData();
   }
 
   void _loadData() {
-    context.read<RoutesCubit>().loadAllRoutes();
+    _routesCubit.loadAllRoutes();
     _favoritesCubit.loadFavoriteRoutes();
   }
 
   void _handleTabChange() {
-    // Clear search when switching tabs
     if (_tabController.indexIsChanging) {
       setState(() {
         _searchQuery = '';
         _searchController.clear();
       });
-
-      // If switching to favorites tab, refresh favorites
       if (_tabController.index == 1) {
-        _favoritesCubit.loadFavoriteRoutes();
+        context.read<FavoritesCubit>().loadFavoriteRoutes();
       }
     }
   }
@@ -65,129 +62,109 @@ class _BusRoutesScreenState extends State<BusRoutesScreen>
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider.value(
-      value: _favoritesCubit,
-      child: Builder(
-        builder: (context) {
-          return Scaffold(
-            appBar: AppBar(
-              title: Text('busRoutes'.tr()),
-              bottom: PreferredSize(
-                preferredSize: const Size.fromHeight(88),
-                child: Column(
-                  children: [
-                    // Search Bar
-                    Padding(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: TextField(
-                        controller: _searchController,
-                        decoration: InputDecoration(
-                          hintText: 'searchRoutes'.tr(),
-                          prefixIcon: const Icon(Icons.search),
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                          suffixIcon:
-                              _searchQuery.isNotEmpty
-                                  ? IconButton(
-                                    icon: const Icon(Icons.clear),
-                                    onPressed: () {
-                                      setState(() {
-                                        _searchController.clear();
-                                        _searchQuery = '';
-                                      });
-                                    },
-                                  )
-                                  : null,
-                        ),
-                        onChanged: (value) {
-                          setState(() {
-                            _searchQuery = value;
-                          });
-                          // Perform search as user types
-                          if (value.isNotEmpty) {
-                            context.read<RoutesCubit>().searchRoutes(value);
-                          }
-                        },
-                      ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('busRoutes'.tr()),
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(88),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'searchRoutes'.tr(),
+                    prefixIcon: const Icon(Icons.search),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    // Tabs
-                    TabBar(
-                      controller: _tabController,
-                      tabs: [
-                        Tab(text: 'allRoutes'.tr()),
-                        Tab(text: 'favorites'.tr()),
-                      ],
-                    ),
-                  ],
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    suffixIcon:
+                        _searchQuery.isNotEmpty
+                            ? IconButton(
+                              icon: const Icon(Icons.clear),
+                              onPressed: () {
+                                setState(() {
+                                  _searchController.clear();
+                                  _searchQuery = '';
+                                });
+                              },
+                            )
+                            : null,
+                  ),
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                    if (value.isNotEmpty) {
+                      context.read<RoutesCubit>().searchRoutes(value);
+                    }
+                  },
                 ),
               ),
-            ),
-            body: TabBarView(
-              controller: _tabController,
-              children: [
-                // All Routes Tab
-                _buildRoutesTab(isAllRoutes: true),
-
-                // Favorites Tab
-                _buildRoutesTab(isAllRoutes: false),
-              ],
-            ),
-          );
-        }
+              TabBar(
+                controller: _tabController,
+                tabs: [
+                  Tab(text: 'allRoutes'.tr()),
+                  Tab(text: 'favorites'.tr()),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      body: TabBarView(
+        controller: _tabController,
+        children: [
+          _buildRoutesTab(isAllRoutes: true),
+          _buildRoutesTab(isAllRoutes: false),
+        ],
       ),
     );
   }
 
   Widget _buildRoutesTab({required bool isAllRoutes}) {
-    return BlocBuilder<RoutesCubit, RoutesState>(
-      builder: (context, routesState) {
-        return BlocConsumer<FavoritesCubit, FavoritesState>(
-          listener: (context, favState) {
-            // Show errors from favorite actions if any
-            if (favState.actionError != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(favState.actionError!)),
-              );
-            }
-          },
-          builder: (context, favoritesState) {
-            // Determine which list to show based on active tab and search query
+    return BlocBuilder<FavoritesCubit, FavoritesState>(
+      builder: (context, favoritesState) {
+        return BlocBuilder<RoutesCubit, RoutesState>(
+          builder: (context, routesState) {
             List<BusRoute> routesToShow = [];
             bool isLoading = false;
             String errorMessage = '';
 
             if (_searchQuery.isNotEmpty) {
-              // Show search results regardless of tab
               routesToShow = routesState.searchResults;
               isLoading = routesState.isSearching;
               errorMessage = routesState.searchError ?? '';
             } else if (isAllRoutes) {
-              // Show all routes
               routesToShow = routesState.allRoutes;
               isLoading = routesState.isLoadingAll;
               errorMessage = routesState.allRoutesError ?? '';
             } else {
-              // Show favorites
-              routesToShow = favoritesState.favoriteRoutes;
+              // Favorite Routes tab: use FavoritesCubit state to map favorites to actual BusRoute
               isLoading = favoritesState.isLoadingRoutes;
               errorMessage = favoritesState.routesError ?? '';
+              routesToShow =
+                  favoritesState.favoriteUserRoutes
+                      .map(
+                        (fav) => routesState.allRoutes.firstWhere(
+                          (r) => r.id == fav.routeId,
+                        ),
+                      )
+                      .whereType<BusRoute>()
+                      .toList();
             }
 
-            // Handle loading state
             if (isLoading) {
               return const Center(child: CircularProgressIndicator());
             }
 
-            // Handle error state
             if (errorMessage.isNotEmpty) {
-              // Format the error message to display in a user-friendly way
               final displayError = _formatErrorMessage(errorMessage);
-
               return Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -210,7 +187,6 @@ class _BusRoutesScreenState extends State<BusRoutesScreen>
               );
             }
 
-            // Handle empty state
             if (routesToShow.isEmpty) {
               return Center(
                 child: Column(
@@ -248,12 +224,11 @@ class _BusRoutesScreenState extends State<BusRoutesScreen>
               );
             }
 
-            // Show list of routes
             return RefreshIndicator(
               onRefresh: () async {
                 _loadData();
                 if (!isAllRoutes) {
-                  _favoritesCubit.loadFavoriteRoutes();
+                  context.read<FavoritesCubit>().loadFavoriteRoutes();
                 }
               },
               child: ListView.builder(
@@ -261,22 +236,31 @@ class _BusRoutesScreenState extends State<BusRoutesScreen>
                 itemCount: routesToShow.length,
                 itemBuilder: (context, index) {
                   final route = routesToShow[index];
-                  // Use the BlocBuilder's context to access the cubit
-                  final isFavorite = _favoritesCubit.isRouteFavorite(route.id);
-
+                  final isFavorite = _favoritesCubit.getFavoriteIdForRoute(route.id) != null;
+                  final favoriteId =
+                      isFavorite
+                          ? _favoritesCubit.getFavoriteIdForRoute(route.id)
+                          : null;
                   return RouteCardWidget(
                     route: route,
                     stops: routesState.routeStopsMap[route.id],
                     isFavorite: isFavorite,
-                    onFavoriteToggle: () {
-                      if (isFavorite) {
-                        context.read<FavoritesCubit>().removeFavoriteRoute(route.id);
+                    onFavoriteToggle: () async {
+                      if (isFavorite && favoriteId != null) {
+                        _favoritesCubit.removeFavoriteRoute(favoriteId);
                       } else {
-                        context.read<FavoritesCubit>().addFavoriteRoute(route.id);
+                        _favoritesCubit.addFavoriteRoute(route.id);
                       }
                     },
                     onTap: () {
-                      context.push('${AppRoutes.routeDetail}/${route.id}');
+                      Navigator.of(context).push(
+                        MaterialPageRoute(
+                          builder: (_) => BlocProvider(
+                            create: (_) => getIt<BusLocationCubit>()..subscribe(route.id),
+                            child: RouteDetailMapScreen(route: route),
+                          ),
+                        ),
+                      );
                     },
                   );
                 },
@@ -288,9 +272,7 @@ class _BusRoutesScreenState extends State<BusRoutesScreen>
     );
   }
 
-  // Helper method to format error messages for display
   String _formatErrorMessage(String error) {
-    // Check for specific error patterns
     if (error.contains("Failed to load bus stops")) {
       return 'errorLoadingBusStops'.tr();
     } else if (error.contains("Failed to load bus routes")) {

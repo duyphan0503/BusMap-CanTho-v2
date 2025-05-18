@@ -1,18 +1,18 @@
 part of 'favorites_cubit.dart';
 
 class FavoritesState {
-  final List<BusRoute> favoriteRoutes;
+  final List<UserFavorite> favoriteUserRoutes;
   final List<UserFavorite> favoriteStops;
-  
+
   final bool isLoadingRoutes;
   final bool isLoadingStops;
-  
+
   final String? routesError;
   final String? stopsError;
   final String? actionError;
 
   const FavoritesState({
-    this.favoriteRoutes = const [],
+    this.favoriteUserRoutes = const [],
     this.favoriteStops = const [],
     this.isLoadingRoutes = false,
     this.isLoadingStops = false,
@@ -24,7 +24,7 @@ class FavoritesState {
   bool get isLoading => isLoadingRoutes || isLoadingStops;
 
   FavoritesState copyWith({
-    List<BusRoute>? favoriteRoutes,
+    List<UserFavorite>? favoriteUserRoutes,
     List<UserFavorite>? favoriteStops,
     bool? isLoadingRoutes,
     bool? isLoadingStops,
@@ -33,7 +33,7 @@ class FavoritesState {
     String? actionError,
   }) {
     return FavoritesState(
-      favoriteRoutes: favoriteRoutes ?? this.favoriteRoutes,
+      favoriteUserRoutes: favoriteUserRoutes ?? this.favoriteUserRoutes,
       favoriteStops: favoriteStops ?? this.favoriteStops,
       isLoadingRoutes: isLoadingRoutes ?? this.isLoadingRoutes,
       isLoadingStops: isLoadingStops ?? this.isLoadingStops,

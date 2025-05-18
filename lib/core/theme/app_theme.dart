@@ -29,6 +29,7 @@ class AppColors {
 
   // Error
   static const Color error = Color(0xFFD32F2F);
+  static const Color errorDark = Color(0xFFE57373); // Lighter error for dark theme
 
   // Dark Theme Specific Colors (Optional, but can be useful for consistency)
   static const Color darkScaffoldBackground = Color(0xFF303030);
@@ -73,14 +74,21 @@ class AppTheme {
     ),
 
     // App bar theme
-    appBarTheme: const AppBarTheme(
+    appBarTheme: AppBarTheme(
       elevation: 0,
-      backgroundColor: AppColors.primary,
-      // Or use colorScheme.primary
-      iconTheme: IconThemeData(color: AppColors.textOnPrimary),
-      // Or colorScheme.onPrimary
-      titleTextStyle: TextStyle(
-        color: AppColors.textOnPrimary, // Or colorScheme.onPrimary
+      scrolledUnderElevation: 1.0, // Added for subtle depth
+      backgroundColor: AppColors.primary, // Will be overridden by colorScheme.primary below
+      iconTheme: const IconThemeData(color: AppColors.textOnPrimary), // Will be overridden by colorScheme.onPrimary
+      titleTextStyle: const TextStyle(
+        color: AppColors.textOnPrimary, // Will be overridden by colorScheme.onPrimary
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+      ),
+    ).copyWith(
+      backgroundColor: AppColors.primary, // Explicitly using AppColors for now, or use scheme
+      iconTheme: const IconThemeData(color: AppColors.textOnPrimary),
+      titleTextStyle: const TextStyle(
+        color: AppColors.textOnPrimary,
         fontSize: 20,
         fontWeight: FontWeight.w600,
       ),
@@ -180,8 +188,7 @@ class AppTheme {
     // Input decoration
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.background.withAlpha(63),
-      // Or a slightly different shade
+      fillColor: AppColors.background.withAlpha(100), // Made slightly more opaque
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -194,24 +201,24 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.primary, width: 2.0),
+        borderSide: const BorderSide(color: AppColors.primary, width: 2.0), // Uses AppColors.primary
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.error, width: 1.0),
+        borderSide: const BorderSide(color: AppColors.error, width: 1.0), // Uses AppColors.error
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.error, width: 2.0),
+        borderSide: const BorderSide(color: AppColors.error, width: 2.0), // Uses AppColors.error
       ),
       labelStyle: const TextStyle(color: AppColors.textSecondary),
       hintStyle: const TextStyle(color: AppColors.textSecondary),
     ),
 
     // Floating action button
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: AppColors.accent, // Or colorScheme.secondary
-      foregroundColor: AppColors.textOnAccent, // Or colorScheme.onSecondary
+    floatingActionButtonTheme: FloatingActionButtonThemeData(
+      backgroundColor: AppColors.accent, // Will use colorScheme.secondary
+      foregroundColor: AppColors.textOnAccent, // Will use colorScheme.onSecondary
       elevation: 4.0,
     ),
 
@@ -248,8 +255,8 @@ class AppTheme {
       // Or Colors.black if primaryLight is very light
       secondary: AppColors.accent,
       onSecondary: AppColors.textOnAccent,
-      error: AppColors.error,
-      onError: Colors.white,
+      error: AppColors.errorDark, // Using the new lighter error color
+      onError: Colors.black, // Text on lighter error surfaces (e.g., on errorDark background)
       surface: AppColors.darkScaffoldBackground,
       // Defined in AppColors
       onSurface: AppColors.textOnDark,
@@ -261,7 +268,15 @@ class AppTheme {
       backgroundColor: AppColors.darkScaffoldBackground,
       // Or colorScheme.background or colorScheme.surface
       iconTheme: const IconThemeData(color: AppColors.textOnDark),
-      titleTextStyle: TextStyle(
+      titleTextStyle: const TextStyle(
+        color: AppColors.textOnDark,
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+      ),
+    ).copyWith(
+      backgroundColor: AppColors.darkScaffoldBackground, // Explicitly using AppColors for now, or use scheme
+      iconTheme: const IconThemeData(color: AppColors.textOnDark),
+      titleTextStyle: const TextStyle(
         color: AppColors.textOnDark,
         fontSize: 20,
         fontWeight: FontWeight.w600,
@@ -355,7 +370,7 @@ class AppTheme {
 
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
-      fillColor: AppColors.darkCardBackground.withAlpha(63),
+      fillColor: AppColors.darkCardBackground.withAlpha(100), // Made slightly more opaque
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
@@ -367,19 +382,19 @@ class AppTheme {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: AppColors.primaryLight, width: 2.0),
+        borderSide: BorderSide(color: AppColors.primaryLight, width: 2.0), // Uses AppColors.primaryLight
       ),
       errorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
-          color: AppColors.error.withRed(200).withGreen(100).withBlue(100),
+          color: AppColors.errorDark, // Using the new AppColors.errorDark
           width: 1.0,
-        ), // Lighter error for dark
+        ),
       ),
       focusedErrorBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(
-          color: AppColors.error.withRed(200).withGreen(100).withBlue(100),
+          color: AppColors.errorDark, // Using the new AppColors.errorDark
           width: 2.0,
         ),
       ),

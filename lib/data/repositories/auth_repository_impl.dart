@@ -12,6 +12,12 @@ class AuthRepositoryImpl implements AuthRepository {
   AuthRepositoryImpl(this._remote);
 
   @override
+  Future<void> initAuthListener() async {
+    _remote.initAuthListener();
+    return Future.value();
+  }
+
+  @override
   Future<AuthResponse> signInWithEmail(String email, String password) =>
       _remote.signInWithEmail(email, password);
 

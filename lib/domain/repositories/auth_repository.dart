@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 abstract class AuthRepository {
+  Future<void> initAuthListener();
+
   Future<AuthResponse> signInWithEmail(String email, String password);
 
   Future<AuthResponse> signUpWithEmail(

@@ -1,19 +1,21 @@
 import 'package:busmapcantho/presentation/screens/auth/otp_verification_screen.dart';
-import 'package:busmapcantho/presentation/screens/routes/bus_routes_screen.dart';
+import 'package:busmapcantho/presentation/screens/home/directions/directions_map_screen.dart';
+import 'package:busmapcantho/presentation/screens/notifications/notifications_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../data/model/bus_route.dart';
+import '../../data/model/bus_stop.dart';
 import '../screens/account/account_screen.dart';
 import '../screens/auth/forgot_password_screen.dart';
 import '../screens/auth/sign_in_screen.dart';
 import '../screens/auth/sign_up_screen.dart';
-import '../screens/favorites_screen.dart';
-import '../screens/home/directions/directions_screen.dart';
+import '../screens/bus_routes/route_detail_map_screen.dart';
+import '../screens/bus_stops/nearby_stops_screen.dart';
+import '../screens/favorite/favorites_screen.dart';
 import '../screens/home/home_screen.dart';
-import '../screens/home/map/map_screen.dart';
 import '../screens/home/search/search_screen.dart';
 import '../screens/splash_screen.dart';
-import '../screens/stops/nearby_stops_screen.dart';
 import 'app_routes.dart';
 
 class AppRouter {
@@ -53,6 +55,29 @@ class AppRouter {
           return ForgotPasswordScreen(email: extra['email'] ?? "");
         },
       ),
+      GoRoute(
+        path: AppRoutes.directionsToStop,
+        parentNavigatorKey: _rootNavigatorKey,
+        builder: (context, state) {
+          final BusStop stop = state.extra as BusStop;
+          return DirectionsMapScreen(stop: stop);
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.nearbyStops,
+        builder: (context, state) => const NearbyStopsScreen(),
+      ),
+      GoRoute(
+        path: AppRoutes.search,
+        builder: (context, state) => const SearchScreen(),
+      ),
+      GoRoute(
+        path: '${AppRoutes.routeDetail}/:routeId',
+        builder: (context, state) {
+          final busRoute = state.extra as BusRoute;
+          return RouteDetailMapScreen(route: busRoute);
+        },
+      ),
       // Main app shell with bottom navigation
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
@@ -64,31 +89,8 @@ class AppRouter {
             path: AppRoutes.home,
             builder: (context, state) => const HomeScreen(),
           ),
-          GoRoute(
-            path: AppRoutes.map,
-            builder: (context, state) => const MapScreen(),
-          ),
-          /*GoRoute(
-            path: AppRoutes.directions,
-            builder: (context, state) => const DirectionsScreen(),
-          ),*/
-          GoRoute(
-            path: AppRoutes.busRoutes,
-            builder: (context, state) => const BusRoutesScreen(),
-          ),
-          /*GoRoute(
-            path: AppRoutes.routeDetails,
-            builder: (context, state) {
-              final routeId = state.pathParameters['routeId']!;
-              return RouteDetailsScreen(routeId: routeId);
-            },
-          ),*/
-          GoRoute(path: AppRoutes.nearbyStops,
-          builder: (context, state) => const NearbyStopsScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.search,
-            builder: (context, state) => const SearchScreen(),
+          GoRoute(path: AppRoutes.notifications,
+            builder: (context, state) => const NotificationsScreen(),
           ),
           GoRoute(
             path: AppRoutes.favorites,
@@ -98,18 +100,6 @@ class AppRouter {
             path: AppRoutes.account,
             builder: (context, state) => const AccountScreen(),
           ),
-          /*GoRoute(
-            path: AppRoutes.settings,
-            builder: (context, state) => const SettingsScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.about,
-            builder: (context, state) => const AboutScreen(),
-          ),
-          GoRoute(
-            path: AppRoutes.help,
-            builder: (context, state) => const HelpScreen(),
-          ),*/
         ],
       ),
     ],
@@ -132,16 +122,15 @@ class ScaffoldWithBottomNav extends StatelessWidget {
         onTap: (index) => _onItemTapped(index, context),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Map'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.directions_bus),
-            label: 'Routes',
+            icon: Icon(Icons.notifications),
+            label: 'Notifications',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.favorite),
             label: 'Favorites',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Account'),
         ],
       ),
     );
@@ -150,10 +139,9 @@ class ScaffoldWithBottomNav extends StatelessWidget {
   int _calculateSelectedIndex(BuildContext context) {
     final location = GoRouterState.of(context).uri.toString();
     if (location.startsWith(AppRoutes.home)) return 0;
-    if (location.startsWith(AppRoutes.map)) return 1;
-    if (location.startsWith(AppRoutes.busRoutes)) return 2;
-    if (location.startsWith(AppRoutes.favorites)) return 3;
-    if (location.startsWith(AppRoutes.account)) return 4;
+    if (location.startsWith(AppRoutes.notifications)) return 1;
+    if (location.startsWith(AppRoutes.favorites)) return 2;
+    if (location.startsWith(AppRoutes.account)) return 3;
     return 0;
   }
 
@@ -163,15 +151,12 @@ class ScaffoldWithBottomNav extends StatelessWidget {
         context.go(AppRoutes.home);
         break;
       case 1:
-        context.go(AppRoutes.map);
+        context.go(AppRoutes.notifications);
         break;
       case 2:
-        context.go(AppRoutes.busRoutes);
-        break;
-      case 3:
         context.go(AppRoutes.favorites);
         break;
-      case 4:
+      case 3:
         context.go(AppRoutes.account);
         break;
     }
