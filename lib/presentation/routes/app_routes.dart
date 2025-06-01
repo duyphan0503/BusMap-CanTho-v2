@@ -6,32 +6,30 @@ class AppRoutes {
   static const verify = '/verify';
   static const forgotPassword = '/forgot-password';
 
-  // Main screens
+  // Main screens in bottom navigation
   static const home = '/home';
-  static const map = '/map';
-  static const busRoutes = '/bus-routes';
-  static const nearbyStops = '/nearby-stops';
-  static const routeDetails = '/route-details/:routeId';
-
-  // Additional features
-  static const search = '/search';
+  static const notifications = '/notifications';
   static const favorites = '/favorites';
-  static const settings = '/settings';
   static const account = '/account';
 
-  // Information screens
-  static const about = '/about';
-  static const help = '/help';
+  // Feature screens
+  static const search = '/search';
+  static const nearbyStops = '/nearby-stops';
 
-  //Directions
+  // Bus routes
+  static const busRoutes = '/bus-routes';
+  static const routeDetail = '/route-detail';
+  static const routeFinder = '/route-finder';
+  static const pickLocationOnMap = '/pick-location-on-map'; // Add this route
+
+  // Directions
   static const directions = '/directions';
-  static const directionsToStop = '/directions/stop';
+  static const reviewSteps = '/review-steps';
 
-  // Routes screen
-  static const routes = '/routes';
-  
-  // Route detail screen
-  static const routeDetail = '/route';
+  // Map
+  static const map = '/map';
 
-  static const notifications = '/notifications';
+  // Route Stops
+  static const routeStops = '/route-stops';
+
 }

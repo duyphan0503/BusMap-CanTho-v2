@@ -11,11 +11,19 @@ class StopLoading extends StopState {}
 
 class StopLoaded extends StopState {
   final List<BusStop> stops;
+  final bool hasMore;
+  final bool isLoadingMore;
+  final DateTime? lastUpdated;
 
-  StopLoaded(this.stops);
+  StopLoaded({
+    required this.stops,
+    required this.hasMore,
+    required this.isLoadingMore,
+    this.lastUpdated,
+  });
 
   @override
-  List<Object?> get props => [stops];
+  List<Object?> get props => [stops, hasMore, isLoadingMore, lastUpdated];
 }
 
 class StopError extends StopState {

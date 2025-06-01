@@ -34,7 +34,7 @@ class UserFavoriteRemoteDatasource {
   Future<UserFavorite> addFavorite({
     String? stopId,
     String? routeId,
-    required String label,
+    String? label,
     required String type,
   }) async {
     try {

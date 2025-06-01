@@ -1,13 +1,13 @@
+import 'package:busmapcantho/core/services/notification_snackbar_service.dart';
 import 'package:busmapcantho/core/utils/validators.dart';
 import 'package:busmapcantho/presentation/cubits/password/password_cubit.dart';
 import 'package:busmapcantho/presentation/routes/app_routes.dart';
+import 'package:busmapcantho/presentation/widgets/common/custom_app_bar.dart';
 import 'package:busmapcantho/presentation/widgets/otp_input_widget.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-
-enum PasswordResetStep { emailInput, otpInput, newPasswordInput }
 
 class ForgotPasswordScreen extends StatefulWidget {
   final String email;
@@ -26,102 +26,130 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   String? _otpValue;
   bool _obscureNewPassword = true;
 
-  // Track current step in the password reset flow
-  PasswordResetStep _currentStep = PasswordResetStep.emailInput;
-
   @override
   void initState() {
     super.initState();
-    // Pre-fill email if provided
     if (widget.email.isNotEmpty) {
       _emailController.text = widget.email;
     }
+    // Optionally, initialize cubit state if needed, though it's set in cubit constructor
+    // context.read<PasswordCubit>().goBackToEmailInput(); // Example if needed
   }
 
-  void _handleBackButton() {
-    if (_currentStep == PasswordResetStep.otpInput) {
-      setState(() {
-        _currentStep = PasswordResetStep.emailInput;
-      });
-    } else if (_currentStep == PasswordResetStep.emailInput) {
+  void _handleBackButton(PasswordState currentState) {
+    if (currentState is PasswordOtpInputState) {
+      context.read<PasswordCubit>().goBackToEmailInput();
+    } else if (currentState is PasswordEmailInputState) {
       if (Navigator.canPop(context)) {
         Navigator.pop(context);
       } else {
         context.go(AppRoutes.signIn);
       }
     }
+    // No back button for NewPasswordInputState as per original logic
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(_getAppBarTitle()),
-        leading:
-            _currentStep != PasswordResetStep.newPasswordInput
-                ? BackButton(onPressed: _handleBackButton)
-                : null,
-      ),
-      body: BlocConsumer<PasswordCubit, PasswordState>(
-        listener: (context, state) {
-          if (state is PasswordRequestOtpSuccess) {
-            // Move to OTP step when OTP request is successful
-            setState(() {
-              _currentStep = PasswordResetStep.otpInput;
-            });
-            _showMessage('otpSentSuccess'.tr());
-          } else if (state is PasswordResetSuccess) {
-            _showMessage('resetPasswordSuccess'.tr());
-            context.go(AppRoutes.signIn);
-          } else if (state is PasswordError) {
-            _showMessage(state.message);
-          }
-        },
-        builder: (context, state) {
-          final isLoading = state is PasswordLoading;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
 
-          return Padding(
+    return BlocConsumer<PasswordCubit, PasswordState>(
+      listener: (context, state) {
+        if (state is PasswordRequestOtpSuccess) {
+          context.showSuccessSnackBar('otpSentSuccess'.tr());
+        } else if (state is PasswordResetSuccess) {
+          context.showSuccessSnackBar('resetPasswordSuccess'.tr());
+          context.go(AppRoutes.signIn);
+        } else if (state is PasswordError) {
+          context.showErrorSnackBar(state.message);
+        }
+      },
+      builder: (context, state) {
+        final isLoading = state is PasswordLoading;
+
+        return Scaffold(
+          appBar: CustomAppBar(
+            title: _getAppBarTitle(state),
+            leading:
+                (state is! PasswordNewPasswordInputState) &&
+                        (state is! PasswordResetSuccess)
+                    ? BackButton(
+                      onPressed: () => _handleBackButton(state),
+                      color: theme.colorScheme.onPrimary,
+                    )
+                    : null,
+          ),
+          body: Padding(
             padding: const EdgeInsets.all(24),
-            child:
-                _currentStep == PasswordResetStep.emailInput
-                    ? _buildEmailStep(isLoading)
-                    : _currentStep == PasswordResetStep.otpInput
-                    ? _buildOtpStep(isLoading)
-                    : _buildNewPasswordStep(isLoading),
-          );
-        },
-      ),
+            child: _buildBody(context, state, isLoading, theme, colorScheme),
+          ),
+        );
+      },
     );
   }
 
-  String _getAppBarTitle() {
-    switch (_currentStep) {
-      case PasswordResetStep.emailInput:
-        return 'forgotPassword'.tr();
-      case PasswordResetStep.otpInput:
-        return 'enterOtp'.tr();
-      case PasswordResetStep.newPasswordInput:
-        return 'resetPassword'.tr();
+  String _getAppBarTitle(PasswordState state) {
+    if (state is PasswordEmailInputState) {
+      return 'forgotPassword'.tr();
+    } else if (state is PasswordOtpInputState ||
+        state is PasswordRequestOtpSuccess) {
+      return 'enterOtp'.tr();
+    } else if (state is PasswordNewPasswordInputState) {
+      return 'resetPassword'.tr();
     }
+    return 'forgotPassword'.tr();
   }
 
-  Widget _buildEmailStep(bool isLoading) {
+  Widget _buildBody(
+    BuildContext context,
+    PasswordState state,
+    bool isLoading,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
+    if (state is PasswordEmailInputState) {
+      return _buildEmailStep(context, isLoading, theme, colorScheme);
+    } else if (state is PasswordOtpInputState) {
+      return _buildOtpStep(context, isLoading, state.email, theme, colorScheme);
+    } else if (state is PasswordNewPasswordInputState) {
+      return _buildNewPasswordStep(
+        context,
+        isLoading,
+        state.email,
+        state.otpCode,
+        theme,
+        colorScheme,
+      );
+    } else if (state is PasswordLoading &&
+        context.read<PasswordCubit>().state is PasswordInitial) {
+      return _buildEmailStep(context, true, theme, colorScheme);
+    }
+    return const Center(child: CircularProgressIndicator());
+  }
+
+  Widget _buildEmailStep(
+    BuildContext context,
+    bool isLoading,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
     return Form(
       key: _emailFormKey,
       child: ListView(
         shrinkWrap: true,
         children: [
-          Text('enterEmailForReset'.tr(), style: const TextStyle(fontSize: 16)),
+          Text('enterEmailForReset'.tr(), style: theme.textTheme.titleMedium),
           const SizedBox(height: 24),
           TextFormField(
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
             decoration: InputDecoration(
               labelText: 'email'.tr(),
-              prefixIcon: const Icon(Icons.email),
-              border: const OutlineInputBorder(),
+              prefixIcon: Icon(Icons.email, color: colorScheme.primary),
             ),
             validator: validateEmail,
+            style: theme.textTheme.bodyLarge,
           ),
           const SizedBox(height: 24),
           if (isLoading)
@@ -137,22 +165,35 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               },
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
+                backgroundColor: colorScheme.primary,
+                foregroundColor: colorScheme.onPrimary,
               ),
-              child: Text('sendResetCode'.tr()),
+              child: Text(
+                'sendResetCode'.tr(),
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: colorScheme.onPrimary,
+                ),
+              ),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildOtpStep(bool isLoading) {
+  Widget _buildOtpStep(
+    BuildContext context,
+    bool isLoading,
+    String email,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
+    if (_emailController.text.isEmpty && email.isNotEmpty) {
+      _emailController.text = email;
+    }
     return ListView(
       shrinkWrap: true,
       children: [
-        Text(
-          '${'otpSentTo'.tr()} ${_emailController.text}',
-          style: const TextStyle(fontSize: 16),
-        ),
+        Text(tr('otpSentTo', args: [email]), style: theme.textTheme.titleMedium),
         const SizedBox(height: 24),
         OtpInputWidget(
           length: 6,
@@ -170,40 +211,55 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ElevatedButton(
             onPressed: () {
               if ((_otpValue?.length ?? 0) == 6) {
-                setState(() {
-                  _currentStep = PasswordResetStep.newPasswordInput;
-                });
+                context.read<PasswordCubit>().proceedToNewPasswordStep(
+                  email,
+                  _otpValue!,
+                );
               } else {
-                _showMessage('otpLengthError'.tr());
+                context.showErrorSnackBar('otpLengthError'.tr());
               }
             },
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 12),
+              backgroundColor: colorScheme.primary,
+              foregroundColor: colorScheme.onPrimary,
             ),
-            child: Text('continue'.tr()),
+            child: Text(
+              'continue'.tr(),
+              style: theme.textTheme.labelLarge?.copyWith(
+                color: colorScheme.onPrimary,
+              ),
+            ),
           ),
       ],
     );
   }
 
-  Widget _buildNewPasswordStep(bool isLoading) {
+  Widget _buildNewPasswordStep(
+    BuildContext context,
+    bool isLoading,
+    String email,
+    String otpCode,
+    ThemeData theme,
+    ColorScheme colorScheme,
+  ) {
     return Form(
       key: _passwordFormKey,
       child: ListView(
         shrinkWrap: true,
         children: [
-          Text('setNewPassword'.tr(), style: const TextStyle(fontSize: 16)),
+          Text('setNewPassword'.tr(), style: theme.textTheme.titleMedium),
           const SizedBox(height: 24),
           TextFormField(
             controller: _newPasswordController,
             obscureText: _obscureNewPassword,
             decoration: InputDecoration(
               labelText: 'newPassword'.tr(),
-              border: const OutlineInputBorder(),
-              prefixIcon: const Icon(Icons.lock),
+              prefixIcon: Icon(Icons.lock, color: colorScheme.primary),
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscureNewPassword ? Icons.visibility_off : Icons.visibility,
+                  color: colorScheme.primary,
                 ),
                 onPressed: () {
                   setState(() {
@@ -213,6 +269,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
             ),
             validator: validatePassword,
+            style: theme.textTheme.bodyLarge,
           ),
           const SizedBox(height: 24),
           if (isLoading)
@@ -222,26 +279,27 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               onPressed: () {
                 if (_passwordFormKey.currentState?.validate() ?? false) {
                   context.read<PasswordCubit>().resetPasswordWithOtp(
-                    email: _emailController.text.trim(),
-                    otpCode: _otpValue!,
+                    email: email,
+                    otpCode: otpCode,
                     newPassword: _newPasswordController.text,
                   );
                 }
               },
               style: ElevatedButton.styleFrom(
                 padding: const EdgeInsets.symmetric(vertical: 12),
+                backgroundColor: colorScheme.primary,
+                foregroundColor: colorScheme.onPrimary,
               ),
-              child: Text('resetPassword'.tr()),
+              child: Text(
+                'resetPassword'.tr(),
+                style: theme.textTheme.labelLarge?.copyWith(
+                  color: colorScheme.onPrimary,
+                ),
+              ),
             ),
         ],
       ),
     );
-  }
-
-  void _showMessage(String message) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override

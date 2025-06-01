@@ -64,10 +64,16 @@ class AccountCubit extends Cubit<AccountState> {
     }
   }
 
-  Future<void> changePassword(String newPassword) async {
+  Future<void> changePassword({
+    required String oldPassword,
+    required String newPassword,
+  }) async {
     emit(AccountLoading());
     try {
-      await changePasswordUseCase(newPassword);
+      await changePasswordUseCase(
+        oldPassword: oldPassword,
+        newPassword: newPassword,
+      );
       final user = await getCurrentUserUseCase();
       if (user != null) {
         emit(AccountUpdateSuccess('Password changed successfully!', user));
@@ -75,7 +81,7 @@ class AccountCubit extends Cubit<AccountState> {
         emit(AccountError('User not found after password change.'));
       }
     } catch (e) {
-      emit(AccountError('Failed to change password.'));
+      emit(AccountError(e.toString()));
     }
   }
 

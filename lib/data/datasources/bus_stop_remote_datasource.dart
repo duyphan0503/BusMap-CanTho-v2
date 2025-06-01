@@ -9,12 +9,11 @@ class BusStopRemoteDatasource {
   final SupabaseClient _client;
 
   BusStopRemoteDatasource([SupabaseClient? client])
-    : _client = client ?? Supabase.instance.client;
+      : _client = client ?? Supabase.instance.client;
 
   Future<List<BusStop>> getBusStops() async {
     try {
       final response = await _client.from('stops').select().order('name');
-
       return response.map((data) => BusStop.fromJson(data)).toList();
     } catch (e) {
       throw Exception('Failed to load bus stops: $e');
@@ -24,8 +23,7 @@ class BusStopRemoteDatasource {
   Future<BusStop> getBusStopById(String id) async {
     try {
       final response =
-          await _client.from('stops').select().eq('id', id).single();
-
+      await _client.from('stops').select().eq('id', id).single();
       return BusStop.fromJson(response);
     } catch (e) {
       throw Exception('Failed to load bus stop: $e');
@@ -39,7 +37,6 @@ class BusStopRemoteDatasource {
           .select()
           .ilike('name', '%$query%')
           .order('name');
-
       return response.map((data) => BusStop.fromJson(data)).toList();
     } catch (e) {
       throw Exception('Failed to search bus stops: $e');
@@ -49,8 +46,10 @@ class BusStopRemoteDatasource {
   Future<List<BusStop>> getNearbyBusStops(
       double lat,
       double lng,
-      double radiusInMeters,
-      ) async {
+      double radiusInMeters, {
+        int limit = 10,
+        int offset = 0,
+      }) async {
     try {
       final response = await _client.rpc(
         'get_nearby_stops',
@@ -58,6 +57,8 @@ class BusStopRemoteDatasource {
           'ref_lat': lat,
           'ref_lng': lng,
           'radius_meters': radiusInMeters,
+          'limit_rows': limit,
+          'offset_rows': offset,
         },
       );
 

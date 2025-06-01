@@ -22,7 +22,7 @@ class UserFavoriteRepository {
   // Add a stop as favorite for the current authenticated user
   Future<UserFavorite> addFavoriteStop({
     required String stopId,
-    required String label,
+    String? label,
   }) {
     return _remoteDatasource.addFavorite(
       stopId: stopId,

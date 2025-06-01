@@ -1,7 +1,7 @@
 import 'package:busmapcantho/data/model/bus_route.dart';
 import 'package:busmapcantho/data/model/bus_stop.dart';
-import 'package:busmapcantho/domain/usecases/bus_route/get_all_bus_routes_usecase.dart';
-import 'package:busmapcantho/domain/usecases/bus_route/search_bus_routes_usecase.dart';
+import 'package:busmapcantho/domain/usecases/bus_routes/get_all_bus_routes_usecase.dart';
+import 'package:busmapcantho/domain/usecases/bus_routes/search_bus_routes_usecase.dart';
 import 'package:busmapcantho/domain/usecases/favorite/get_favorite_routes_usecase.dart';
 import 'package:busmapcantho/domain/usecases/route_stops/get_route_stops_as_bus_stops_usecase.dart';
 import 'package:equatable/equatable.dart';

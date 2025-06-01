@@ -1,11 +1,15 @@
+import 'package:busmapcantho/domain/repositories/notification_repository.dart';
+import 'package:injectable/injectable.dart';
+
 import '../../../data/model/notification.dart';
-import '../../../data/repositories/notification_repository.dart';
 
+@injectable
 class GetUserNotificationsUseCase {
-  final NotificationRepository repo;
+  final NotificationRepository _repo;
 
-  GetUserNotificationsUseCase(this.repo);
+  GetUserNotificationsUseCase(this._repo);
 
-  Future<List<AppNotification>> call() =>
-      repo.getUserNotifications();
+  Future<List<AppNotification>> execute() {
+    return _repo.getUserNotifications();
+  }
 }

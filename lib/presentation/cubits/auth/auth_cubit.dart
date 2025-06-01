@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:busmapcantho/domain/usecases/auth/get_current_user_usecase.dart';
 import 'package:busmapcantho/domain/usecases/auth/google_sign_in_native_usecase.dart';
 import 'package:busmapcantho/domain/usecases/auth/sign_in_usecase.dart';
@@ -5,8 +7,9 @@ import 'package:busmapcantho/domain/usecases/auth/sign_out_usecase.dart';
 import 'package:busmapcantho/domain/usecases/auth/sign_up_usecase.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'auth_state.dart';
+part 'auth_state.dart';
 
 @injectable
 class AuthCubit extends Cubit<AuthState> {
@@ -15,28 +18,49 @@ class AuthCubit extends Cubit<AuthState> {
   final SignInUseCase _signInUseCase;
   final GoogleSignInNativeUseCase _googleSignInNativeUseCase;
   final SignOutUseCase _signOutUseCase;
+  StreamSubscription? _authStateSubscription;
 
   AuthCubit(
-    this._getCurrentUserUseCase,
-    this._signUpUseCase,
-    this._signInUseCase,
-    this._googleSignInNativeUseCase,
-    this._signOutUseCase,
-  ) : super(AuthInitial()) {
+      this._getCurrentUserUseCase,
+      this._signUpUseCase,
+      this._signInUseCase,
+      this._googleSignInNativeUseCase,
+      this._signOutUseCase,
+      ) : super(AuthInitial()) {
     _checkAuth();
+    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+      if (event == AuthChangeEvent.signedOut) {
+        if (state is! AuthUnauthenticated) emit(AuthUnauthenticated());
+      } else if (event == AuthChangeEvent.signedIn ||
+          event == AuthChangeEvent.tokenRefreshed ||
+          event == AuthChangeEvent.userUpdated) {
+        _checkAuth();
+      }
+    });
   }
 
   Future<void> _checkAuth() async {
-    emit(AuthLoading());
+    if (state is! AuthAuthenticated) {
+      // Avoid emitting loading if already authenticated to prevent UI flicker on token refresh
+      emit(AuthLoading());
+    }
     try {
       final user = await _getCurrentUserUseCase();
       if (user != null) {
-        emit(AuthAuthenticated(user));
+        // Only emit if the user is different or the state is not AuthAuthenticated
+        if (state is! AuthAuthenticated || (state as AuthAuthenticated).user.id != user.id) {
+          emit(AuthAuthenticated(user));
+        }
       } else {
-        emit(AuthUnauthenticated());
+        if (state is! AuthUnauthenticated) {
+          emit(AuthUnauthenticated());
+        }
       }
     } catch (_) {
-      emit(AuthUnauthenticated());
+      if (state is! AuthUnauthenticated) {
+        emit(AuthUnauthenticated());
+      }
     }
   }
 
@@ -54,7 +78,7 @@ class AuthCubit extends Cubit<AuthState> {
     emit(AuthLoading());
     try {
       await _signInUseCase(email, password);
-      await _checkAuth();
+      await _checkAuth(); // Re-check auth after sign-in attempt
     } catch (e) {
       emit(AuthError(e.toString()));
     }
@@ -64,7 +88,7 @@ class AuthCubit extends Cubit<AuthState> {
     emit(AuthLoading());
     try {
       await _googleSignInNativeUseCase();
-      await _checkAuth();
+      await _checkAuth(); // Re-check auth after Google sign-in attempt
     } catch (e) {
       emit(AuthError(e.toString()));
     }
@@ -74,7 +98,22 @@ class AuthCubit extends Cubit<AuthState> {
     emit(AuthLoading());
     try {
       await _signOutUseCase();
-    } catch (_) {}
-    emit(AuthUnauthenticated());
+      // onAuthStateChange listener will handle emitting AuthUnauthenticated
+    } catch (_) {
+      // Even if sign out fails on the server, treat as unauthenticated locally.
+      if (state is! AuthUnauthenticated) {
+        emit(AuthUnauthenticated());
+      }
+    }
+    // Ensure unauthenticated state is emitted if not already handled by listener quickly enough
+    if (state is! AuthUnauthenticated) {
+       emit(AuthUnauthenticated());
+    }
+  }
+
+  @override
+  Future<void> close() {
+    _authStateSubscription?.cancel();
+    return super.close();
   }
 }

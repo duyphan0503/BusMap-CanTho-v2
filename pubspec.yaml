@@ -36,12 +36,10 @@ dependencies:
   google_sign_in: ^6.3.0
   provider: ^6.1.5
   intl_phone_field: ^3.2.0
-  grpc: ^4.0.4
-  protobuf: ^4.0.0
   flutter_bloc: ^9.1.1
   equatable: ^2.0.7
   easy_localization: ^3.0.7+1
-  intl: ^0.19.0
+  intl: ^0.20.2
   shared_preferences: ^2.5.3
   logger: ^2.5.0
   image_picker: ^1.1.2
@@ -51,11 +49,11 @@ dependencies:
   flutter_secure_storage: ^9.2.4
   webview_flutter: ^4.11.0
   go_router: ^15.1.1
-  permission_handler: ^12.0.0+1
+  permission_handler: ^11.4.0
   lottie: ^3.3.1
   get_it: ^8.0.3
   injectable: ^2.5.0
-  flutter_local_notifications: ^19.2.0
+  flutter_local_notifications: ^19.2.1
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -67,20 +65,25 @@ dependencies:
   flutter_rating_bar: ^4.0.1
   flutter_rating_stars: ^1.1.0
   flutter_map_tile_caching: ^10.1.1
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  salomon_bottom_bar: ^3.3.2
+
+  qr_flutter: ^4.1.0
+
+  nominatim_flutter: ^0.0.7
+  flutter_osm_plugin: ^1.3.8
+  flutter_gen_runner: ^5.10.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   build_runner: ^2.4.15
-  flutter_gen_runner: ^5.10.0
   injectable_generator: ^2.7.0
   flutter_lints: ^5.0.0
-  flutter_launcher_icons: ^0.14.3
-
-flutter_icons:
-  android: true
-  ios: true
-  image_path: "assets/images/logo.png"
+  rename_app: ^1.6.3
+  flutter_native_splash: ^2.4.6
+  #flutter_launcher_icons: ^0.14.3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
@@ -97,7 +100,6 @@ flutter:
     - assets/translations/
     - assets/images/
     - assets/animations/
-    - .env
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

@@ -1,28 +1,50 @@
-class AppNotification {
+import 'package:equatable/equatable.dart';
+
+class AppNotification extends Equatable {
   final String id;
   final String userId;
   final String message;
   final DateTime sentAt;
 
-  AppNotification({
+  const AppNotification({
     required this.id,
     required this.userId,
     required this.message,
     required this.sentAt,
   });
 
-  factory AppNotification.fromJson(Map<String, dynamic> json) =>
-      AppNotification(
-        id: json['id'] as String,
-        userId: json['user_id'] as String,
-        message: json['message'] as String,
-        sentAt: DateTime.parse(json['sent_at'] as String),
-      );
+  @override
+  List<Object?> get props => [id, userId, message, sentAt];
 
-  Map<String, dynamic> toJson() => {
-    'id': id,
-    'user_id': userId,
-    'message': message,
-    'sent_at': sentAt.toIso8601String(),
-  };
+  factory AppNotification.fromJson(Map<String, dynamic> json) {
+    return AppNotification(
+      id: json['id'].toString(),
+      userId: json['user_id'],
+      message: json['message'],
+      sentAt: DateTime.parse(json['sent_at']),
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'user_id': userId,
+      'message': message,
+      'sent_at': sentAt.toIso8601String(),
+    };
+  }
+
+  AppNotification copyWith({
+    String? id,
+    String? userId,
+    String? message,
+    DateTime? sentAt,
+  }) {
+    return AppNotification(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      message: message ?? this.message,
+      sentAt: sentAt ?? this.sentAt,
+    );
+  }
 }

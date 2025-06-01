@@ -1,4 +1,4 @@
-import 'package:supabase_flutter/supabase_flutter.dart';
+part of 'auth_cubit.dart';
 
 abstract class AuthState {}
 
@@ -21,3 +21,4 @@ class AuthError extends AuthState {
 
   AuthError(this.error);
 }
+

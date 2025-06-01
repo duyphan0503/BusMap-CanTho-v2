@@ -21,7 +21,7 @@ abstract class AuthRepository {
 
   Future<User> updateProfileImage(File file);
 
-  Future<void> changePassword(String newPassword);
+  Future<void> changePassword(String oldPassword, String newPassword);
 
   Future<void> signOut();
 

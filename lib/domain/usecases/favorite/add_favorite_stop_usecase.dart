@@ -9,6 +9,6 @@ class AddFavoriteStopUseCase {
 
   AddFavoriteStopUseCase(this.repository);
 
-  Future<UserFavorite> call({required String stopId, required String label}) =>
+  Future<UserFavorite> call({required String stopId, String? label}) =>
       repository.addFavoriteStop(stopId: stopId, label: label);
 }

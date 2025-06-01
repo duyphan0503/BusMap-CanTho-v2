@@ -150,7 +150,26 @@ class AuthRemoteDatasource {
     return updatedUser;
   }
 
-  Future<void> changePassword(String newPassword) async {
+  Future<void> changePassword(String oldPassword, String newPassword) async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw Exception('No user is currently signed in');
+
+    // Xác thực lại mật khẩu cũ
+    final email = user.email;
+    if (email == null) throw Exception('No email found for current user');
+    try {
+      final signInRes = await _client.auth.signInWithPassword(
+        email: email,
+        password: oldPassword,
+      );
+      if (signInRes.user == null) {
+        throw Exception('Old password is incorrect');
+      }
+    } on AuthException {
+      throw Exception('Old password is incorrect');
+    }
+
+    // Đổi mật khẩu nếu xác thực thành công
     await _client.auth.updateUser(UserAttributes(password: newPassword));
   }
 

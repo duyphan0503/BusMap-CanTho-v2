@@ -5,9 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../../gen/assets.gen.dart';
 import '../../cubits/auth/auth_cubit.dart';
-import '../../cubits/auth/auth_state.dart';
 import '../../routes/app_routes.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -27,6 +27,9 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
     return BlocListener<AuthCubit, AuthState>(
       listener: (context, state) {
         if (state is AuthAuthenticated) {
@@ -37,20 +40,14 @@ class _SignInScreenState extends State<SignInScreen> {
         }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            'signIn'.tr(),
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          actions: const [LanguageSelectorWidget()],
-        ),
+        appBar: _buildAppBar(),
         body: SafeArea(
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 400),
-                child: _buildLoginForm(),
+                child: _buildLoginForm(theme, colorScheme),
               ),
             ),
           ),
@@ -59,7 +56,35 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  Widget _buildLoginForm() {
+  PreferredSize _buildAppBar() {
+    final theme = Theme.of(context);
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(50),
+      child: Container(
+        alignment: Alignment.center,
+        decoration: const BoxDecoration(
+          gradient: AppColors.primaryGradient,
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+        ),
+        child: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          title: Text(
+            'signIn'.tr(),
+            style: theme.textTheme.titleLarge?.copyWith(
+              color: AppColors.textOnPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          actions: const [LanguageSelectorWidget()],
+          centerTitle: true,
+          automaticallyImplyLeading: false,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLoginForm(ThemeData theme, ColorScheme colorScheme) {
     return Form(
       key: _formKey,
       child: Column(
@@ -70,6 +95,10 @@ class _SignInScreenState extends State<SignInScreen> {
             height: 100,
             width: 100,
             alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withAlpha((0.08 * 255).toInt()),
+              borderRadius: BorderRadius.circular(24),
+            ),
             child: Image.asset(Assets.images.logo.path, fit: BoxFit.cover),
           ),
           const SizedBox(height: 40),
@@ -81,11 +110,11 @@ class _SignInScreenState extends State<SignInScreen> {
             decoration: InputDecoration(
               labelText: 'email'.tr(),
               hintText: 'emailHint'.tr(),
-              border: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(12)),
+              prefixIcon: Icon(
+                Icons.email_outlined,
+                color: colorScheme.primary,
               ),
-              prefixIcon: const Icon(Icons.email_outlined),
-              filled: true,
+              // Sử dụng style từ theme
             ),
             keyboardType: TextInputType.emailAddress,
             autocorrect: false,
@@ -94,6 +123,7 @@ class _SignInScreenState extends State<SignInScreen> {
               FocusScope.of(context).requestFocus(_passwordFocusNode);
             },
             validator: validateEmail,
+            style: theme.textTheme.bodyLarge,
           ),
           const SizedBox(height: 16),
 
@@ -104,13 +134,11 @@ class _SignInScreenState extends State<SignInScreen> {
             decoration: InputDecoration(
               labelText: 'password'.tr(),
               hintText: 'passwordHint'.tr(),
-              border: const OutlineInputBorder(
-                borderRadius: BorderRadius.all(Radius.circular(12)),
-              ),
-              prefixIcon: const Icon(Icons.lock_outline),
+              prefixIcon: Icon(Icons.lock_outline, color: colorScheme.primary),
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                  color: colorScheme.primary,
                 ),
                 onPressed: () {
                   setState(() {
@@ -118,12 +146,12 @@ class _SignInScreenState extends State<SignInScreen> {
                   });
                 },
               ),
-              filled: true,
             ),
             obscureText: _obscurePassword,
             textInputAction: TextInputAction.done,
             onFieldSubmitted: (_) => _attemptLogin(),
             validator: validatePassword,
+            style: theme.textTheme.bodyLarge,
           ),
 
           Align(
@@ -135,7 +163,13 @@ class _SignInScreenState extends State<SignInScreen> {
                   extra: {"email": _emailController.text},
                 );
               },
-              child: Text('forgotPassword'.tr()),
+              child: Text(
+                'forgotPassword'.tr(),
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 24),
@@ -150,6 +184,9 @@ class _SignInScreenState extends State<SignInScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  textStyle: theme.textTheme.labelLarge,
                 ),
                 child:
                     isLoading
@@ -158,12 +195,14 @@ class _SignInScreenState extends State<SignInScreen> {
                           width: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
-                            color: Colors.white,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
                           ),
                         )
                         : Text(
                           'signIn'.tr(),
-                          style: const TextStyle(fontSize: 16),
+                          style: theme.textTheme.labelLarge,
                         ),
               );
             },
@@ -173,26 +212,43 @@ class _SignInScreenState extends State<SignInScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('noAccountQuestion'.tr()),
+              Text('noAccountQuestion'.tr(), style: theme.textTheme.bodyMedium),
               TextButton(
                 onPressed: () => context.push(AppRoutes.signUp),
-                child: Text('register'.tr()),
+                child: Text(
+                  'register'.tr(),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: colorScheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
             ],
           ),
-          const Divider(height: 32),
+          Divider(height: 32, color: theme.dividerColor),
 
           // Đăng nhập bằng Google
           BlocBuilder<AuthCubit, AuthState>(
             builder: (context, state) {
               return OutlinedButton.icon(
-                icon: const Icon(Icons.g_mobiledata, size: 24),
-                label: Text('loginWithGoogle'.tr()),
+                icon: Icon(
+                  Icons.g_mobiledata,
+                  size: 24,
+                  color: colorScheme.primary,
+                ),
+                label: Text(
+                  'loginWithGoogle'.tr(),
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    color: colorScheme.primary,
+                  ),
+                ),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
+                  side: BorderSide(color: colorScheme.primary),
+                  foregroundColor: colorScheme.primary,
                 ),
                 onPressed:
                     state is AuthLoading
@@ -218,8 +274,11 @@ class _SignInScreenState extends State<SignInScreen> {
   void _showSuccessMessage(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.green,
+        content: Text(
+          message,
+          style: TextStyle(color: AppColors.textOnPrimary),
+        ),
+        backgroundColor: AppColors.success,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -228,8 +287,11 @@ class _SignInScreenState extends State<SignInScreen> {
   void _showErrorMessage(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('${'error'.tr()}: $message'),
-        backgroundColor: Colors.red,
+        content: Text(
+          '${'error'.tr()}: $message',
+          style: TextStyle(color: AppColors.textOnPrimary),
+        ),
+        backgroundColor: AppColors.error,
         behavior: SnackBarBehavior.floating,
       ),
     );

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:busmapcantho/core/theme/app_colors.dart';
 import 'package:busmapcantho/data/model/bus_location.dart';
 import 'package:busmapcantho/data/model/bus_stop.dart';
 import 'package:busmapcantho/gen/assets.gen.dart';
@@ -8,10 +9,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_animations/flutter_map_animations.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as osm;
-import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart'; // Import package
-import 'package:busmapcantho/services/map_caching_service.dart';
-import 'package:busmapcantho/core/di/injection.dart';
+
+import '../routes/app_routes.dart';
 
 typedef StopCallback = void Function(BusStop stop);
 typedef VoidCallback = void Function();
@@ -28,11 +30,18 @@ class BusMapWidget extends StatefulWidget {
   final VoidCallback onDirections;
   final StopCallback onRoutes;
 
-  /// Optional route polyline and labels.
   final List<osm.LatLng> routePoints;
+  final osm.LatLng? startLocation; // Added start location parameter
+  final osm.LatLng? endLocation; // Added end location parameter
   final String? distanceLabel;
   final String? durationLabel;
-  final List<BusLocation>? busLocations; // Thêm prop mới cho busLocations
+  final List<BusLocation>? busLocations;
+  final double? markerVisibilityZoomThreshold;
+  final String? transportMode;
+  final Map<String, dynamic>? highlightedStep;
+  final void Function(LatLngBounds)? onMapMoved;
+  final void Function(osm.LatLng center, bool hasGesture)?
+  onPickerMapMoved; // New callback
 
   const BusMapWidget({
     super.key,
@@ -47,9 +56,16 @@ class BusMapWidget extends StatefulWidget {
     required this.onDirections,
     required this.onRoutes,
     this.routePoints = const [],
+    this.startLocation, // Add to constructor
+    this.endLocation, // Add to constructor
     this.distanceLabel,
     this.durationLabel,
-    this.busLocations, // Thêm vào constructor
+    this.busLocations,
+    this.markerVisibilityZoomThreshold,
+    this.transportMode,
+    this.highlightedStep,
+    this.onMapMoved,
+    this.onPickerMapMoved, // Add to constructor
   });
 
   @override
@@ -60,24 +76,36 @@ class _BusMapWidgetState extends State<BusMapWidget>
     with TickerProviderStateMixin, AutomaticKeepAliveClientMixin {
   static const _canThoCenter = osm.LatLng(10.0364634, 105.7875821);
   static const _initialZoom = 13.0;
-  static const _markerVisibilityZoomThreshold = 13.0;
+  static const double _defaultMarkerVisibilityZoomThreshold = 15.0;
 
   late final AnimatedMapController _mapCtrl;
   late final StreamSubscription<MapEvent> _mapEventSub;
   double _currentZoom = _initialZoom;
   bool _showMarkers = true;
-  late final TileProvider _tileProvider;
+
+  final _tileProvider = FMTCTileProvider(
+    stores: const {'mapStore': BrowseStoreStrategy.readUpdateCreate},
+  );
+
+  double get _markerVisibilityZoomThreshold =>
+      widget.markerVisibilityZoomThreshold ??
+      _defaultMarkerVisibilityZoomThreshold;
 
   @override
   void initState() {
     super.initState();
-    // Obtain tile provider from caching service
-    _tileProvider = getIt<MapCachingService>().getTileProvider();
     _mapCtrl = AnimatedMapController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
     );
     _mapEventSub = _mapCtrl.mapController.mapEventStream.listen(_onMapEvent);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final bounds = _mapCtrl.mapController.camera.visibleBounds;
+      if (widget.onMapMoved != null) {
+        widget.onMapMoved!(bounds);
+      }
+    });
   }
 
   void _onMapEvent(MapEvent evt) {
@@ -86,6 +114,28 @@ class _BusMapWidgetState extends State<BusMapWidget>
         _currentZoom = evt.camera.zoom;
         _showMarkers = _currentZoom >= _markerVisibilityZoomThreshold;
       });
+    }
+    if (evt is MapEventMoveEnd && widget.onMapMoved != null) {
+      final bounds = _mapCtrl.mapController.camera.visibleBounds;
+      widget.onMapMoved!(bounds);
+      debugPrint('Map moved to bounds: $bounds');
+    }
+  }
+
+  @override
+  void didUpdateWidget(BusMapWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+
+    if (widget.highlightedStep != null &&
+        widget.highlightedStep != oldWidget.highlightedStep) {
+      _zoomToStep(widget.highlightedStep!);
+    }
+  }
+
+  void _zoomToStep(Map<String, dynamic> step) {
+    if (step['location'] != null) {
+      final location = step['location'] as osm.LatLng;
+      _mapCtrl.animateTo(dest: location, zoom: 17.0);
     }
   }
 
@@ -108,8 +158,9 @@ class _BusMapWidgetState extends State<BusMapWidget>
             initialZoom: _initialZoom,
             minZoom: 10,
             maxZoom: 18,
-            interactionOptions:
-            const InteractionOptions(flags: InteractiveFlag.all & ~InteractiveFlag.rotate),
+            interactionOptions: const InteractionOptions(
+              flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
+            ),
             cameraConstraint: CameraConstraint.contain(
               bounds: LatLngBounds(
                 osm.LatLng(9.9, 105.6),
@@ -117,105 +168,298 @@ class _BusMapWidgetState extends State<BusMapWidget>
               ),
             ),
             onTap: (_, __) => widget.onClearSelectedStop(),
+            keepAlive: true,
+            onMapEvent: (event) {
+              _onMapEvent(event);
+              if (widget.onPickerMapMoved != null && event is MapEventMoveEnd) {
+                final center = _mapCtrl.mapController.camera.center;
+                widget.onPickerMapMoved!(
+                  osm.LatLng(center.latitude, center.longitude),
+                  true,
+                );
+              }
+            },
           ),
           children: [
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-              tileProvider: _tileProvider, // Use cached TileProvider
+              tileProvider: _tileProvider,
               subdomains: const ['a', 'b', 'c'],
               userAgentPackageName: 'com.busmapcantho.app',
               additionalOptions: const {
-                'attribution': '© OpenStreetMap contributors'
+                'attribution': '© OpenStreetMap contributors',
               },
             ),
             CurrentLocationLayer(),
             if (_showMarkers)
+              BusStopMarkerLayer(
+                busStops: widget.busStops,
+                selectedStop: widget.selectedStop,
+                onStopSelected: (stop) {
+                  widget.onStopSelected(stop);
+                  _mapCtrl.animateTo(
+                    dest: osm.LatLng(stop.latitude, stop.longitude),
+                    zoom: _currentZoom < 15 ? 15 : _currentZoom,
+                  );
+                },
+              ),
+            if (widget.busLocations != null)
+              BusLocationMarkerLayer(busLocations: widget.busLocations!),
+
+            // Add markers for start and end locations
+            if (widget.startLocation != null || widget.endLocation != null)
               MarkerLayer(
-                markers: widget.busStops.map((stop) {
-                  final isSelected = widget.selectedStop?.id == stop.id;
-                  return Marker(
-                    width: isSelected ? 40 : 32,
-                    height: isSelected ? 40 : 32,
-                    point: osm.LatLng(stop.latitude, stop.longitude),
-                    child: GestureDetector(
-                      onTap: () {
-                        widget.onStopSelected(stop);
-                        _mapCtrl.animateTo(
-                          dest: osm.LatLng(stop.latitude, stop.longitude),
-                          zoom: _currentZoom < 15 ? 15 : _currentZoom,
-                        );
-                      },
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
-                        padding: EdgeInsets.all(isSelected ? 2 : 0),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: isSelected
-                              ? Colors.blue.shade300
-                              : Colors.transparent,
-                        ),
-                        child: Image.asset(
-                          Assets.images.busStops.path,
-                          color: isSelected ? Colors.blue.shade700 : null,
-                        ),
+                markers: [
+                  if (widget.startLocation != null)
+                    Marker(
+                      width: 40,
+                      height: 40,
+                      point: widget.startLocation!,
+                      child: const Icon(
+                        Icons.trip_origin_outlined,
+                        color: Colors.blueAccent,
+                        size: 32,
                       ),
                     ),
-                  );
-                }).toList()
-                // ...existing code...
-              ),
-            // Hiển thị marker xe buýt
-            if (widget.busLocations != null)
-              MarkerLayer(
-                markers: widget.busLocations!.map((bus) {
-                  return Marker(
-                    width: 32,
-                    height: 32,
-                    point: osm.LatLng(bus.lat, bus.lng),
-                    child: Image.asset(
-                      Assets.images.bus.path,
-                      // Hoặc icon xe buýt phù hợp
-                      width: 32,
-                      height: 32,
+                  if (widget.endLocation != null)
+                    Marker(
+                      width: 40,
+                      height: 40,
+                      point: widget.endLocation!,
+                      child: const Icon(
+                        Icons.location_on,
+                        color: Colors.red,
+                        size: 40,
+                      ),
                     ),
-                  );
-                }).toList().cast<Marker>(),
+                ],
               ),
-            // Draw route polyline if provided
+
+            if (widget.routePoints.isNotEmpty)
+              RoutePolylineLayer(
+                routePoints: widget.routePoints,
+                transportMode: widget.transportMode,
+              ),
+            if (widget.highlightedStep != null &&
+                widget.highlightedStep!['location'] != null)
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: widget.highlightedStep!['location'] as osm.LatLng,
+                    child: const Icon(
+                      Icons.location_pin,
+                      color: Colors.blue,
+                      size: 40,
+                    ),
+                  ),
+                ],
+              ),
             if (widget.routePoints.isNotEmpty)
               PolylineLayer(
                 polylines: [
                   Polyline(
                     points: widget.routePoints,
-                    color: Colors.blue,
-                    strokeWidth: 4.0,
-                  )
+                    color: AppColors.primaryLight,
+                    strokeWidth: 7.0,
+                  ),
                 ],
               ),
           ],
         ),
+        MapControls(
+          onZoomIn: () => _mapCtrl.animateTo(zoom: _currentZoom + 1),
+          onZoomOut: () => _mapCtrl.animateTo(zoom: _currentZoom - 1),
+          onRefresh: widget.refreshStops,
+          onCenterUser: () {
+            _mapCtrl.animateTo(
+              dest: widget.userLocation,
+              zoom: _currentZoom < 15 ? 15 : _currentZoom,
+            );
+            widget.onCenterUser();
+          },
+        ),
+        if (widget.selectedStop != null &&
+            GoRouterState.of(context).matchedLocation != AppRoutes.directions &&
+            ModalRoute.of(context)?.settings.name != '/route-detail/:routeId')
+          StopInfoCard(
+            stop: widget.selectedStop!,
+            onClose: widget.onClearSelectedStop,
+            onDirections: widget.onDirections,
+            onRoutes: widget.onRoutes,
+            routePoints: widget.routePoints,
+            distanceLabel: widget.distanceLabel,
+            durationLabel: widget.durationLabel,
+          ),
+      ],
+    );
+  }
 
-        // Zoom and refresh controls (unchanged)
+  @override
+  bool get wantKeepAlive => true;
+}
+
+class BusStopMarkerLayer extends StatelessWidget {
+  final List<BusStop> busStops;
+  final BusStop? selectedStop;
+  final StopCallback onStopSelected;
+
+  const BusStopMarkerLayer({
+    super.key,
+    required this.busStops,
+    required this.selectedStop,
+    required this.onStopSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return MarkerLayer(
+      markers:
+          busStops.map((stop) {
+            final isSelected = selectedStop?.id == stop.id;
+            return Marker(
+              width: isSelected ? 40 : 32,
+              height: isSelected ? 40 : 32,
+              point: osm.LatLng(stop.latitude, stop.longitude),
+              child: GestureDetector(
+                onTap: () => onStopSelected(stop),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  padding: EdgeInsets.all(isSelected ? 2 : 0),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color:
+                        isSelected ? Colors.blue.shade300 : Colors.transparent,
+                  ),
+                  child: Image.asset(
+                    Assets.images.busStops.path,
+                    color: isSelected ? Colors.blue.shade700 : null,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+    );
+  }
+}
+
+class BusLocationMarkerLayer extends StatelessWidget {
+  final List<BusLocation> busLocations;
+
+  const BusLocationMarkerLayer({super.key, required this.busLocations});
+
+  @override
+  Widget build(BuildContext context) {
+    return MarkerLayer(
+      markers:
+          busLocations
+              .map(
+                (bus) => Marker(
+                  width: 48,
+                  height: 48,
+                  point: osm.LatLng(bus.lat, bus.lng),
+                  child: Image.asset(
+                    Assets.images.bus.path,
+                    width: 48,
+                    height: 48,
+                  ),
+                ),
+              )
+              .toList(),
+    );
+  }
+}
+
+class RoutePolylineLayer extends StatelessWidget {
+  final List<osm.LatLng> routePoints;
+  final String? transportMode;
+
+  const RoutePolylineLayer({
+    super.key,
+    required this.routePoints,
+    this.transportMode,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    Color routeColor;
+    double strokeWidth;
+    bool isDashed = false;
+    switch (transportMode) {
+      case 'car':
+        routeColor = Colors.blue.shade700;
+        strokeWidth = 4.0;
+        break;
+      case 'walk':
+        routeColor = Colors.green.shade700;
+        strokeWidth = 3.0;
+        isDashed = true;
+        break;
+      case 'motorbike':
+        routeColor = Colors.orange.shade700;
+        strokeWidth = 3.5;
+        break;
+      case 'bus':
+        routeColor = Colors.purple.shade700;
+        strokeWidth = 4.5;
+        isDashed = true;
+        break;
+      default:
+        routeColor = Colors.blue.shade700;
+        strokeWidth = 4.0;
+    }
+    return PolylineLayer(
+      polylines: [
+        Polyline(
+          points: routePoints,
+          color: routeColor,
+          strokeWidth: strokeWidth,
+          gradientColors:
+              isDashed
+                  ? null
+                  : [
+                    routeColor.withAlpha(75),
+                    routeColor,
+                    routeColor,
+                    routeColor.withAlpha(75),
+                  ],
+          borderColor: routeColor.withAlpha(75),
+          borderStrokeWidth: isDashed ? 0 : 1.5,
+        ),
+      ],
+    );
+  }
+}
+
+class MapControls extends StatelessWidget {
+  final VoidCallback onZoomIn;
+  final VoidCallback onZoomOut;
+  final VoidCallback onRefresh;
+  final VoidCallback onCenterUser;
+  final VoidCallback? onPrevStep;
+  final VoidCallback? onNextStep;
+  final bool showStepNavigation;
+
+  const MapControls({
+    super.key,
+    required this.onZoomIn,
+    required this.onZoomOut,
+    required this.onRefresh,
+    required this.onCenterUser,
+    this.onPrevStep,
+    this.onNextStep,
+    this.showStepNavigation = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Show either regular zoom controls or step navigation controls
+        if (showStepNavigation)
         Positioned(
           bottom: 16,
           right: 16,
-          child: Column(
-            children: [
-              FloatingActionButton(
-                heroTag: 'zoom_in',
-                mini: true,
-                onPressed: () => _mapCtrl.animateTo(zoom: _currentZoom + 1),
-                child: const Icon(Icons.add),
-              ),
-              const SizedBox(height: 4),
-              FloatingActionButton(
-                heroTag: 'zoom_out',
-                mini: true,
-                onPressed: () => _mapCtrl.animateTo(zoom: _currentZoom - 1),
-                child: const Icon(Icons.remove),
-              ),
-            ],
-          ),
+          child: _buildStepNavigationControls(),
         ),
         Positioned(
           top: 16,
@@ -225,7 +469,7 @@ class _BusMapWidgetState extends State<BusMapWidget>
               FloatingActionButton(
                 heroTag: 'reload_stops',
                 mini: true,
-                onPressed: widget.refreshStops,
+                onPressed: onRefresh,
                 tooltip: 'reload'.tr(),
                 child: const Icon(Icons.refresh),
               ),
@@ -233,112 +477,157 @@ class _BusMapWidgetState extends State<BusMapWidget>
               FloatingActionButton(
                 heroTag: 'my_location',
                 mini: true,
-                onPressed: () {
-                  _mapCtrl.animateTo(
-                    dest: widget.userLocation,
-                    zoom: _currentZoom < 15 ? 15 : _currentZoom,
-                  );
-                  widget.onCenterUser();
-                },
+                onPressed: onCenterUser,
                 tooltip: 'myLocation'.tr(),
                 child: const Icon(Icons.my_location),
               ),
             ],
           ),
         ),
-
-        // Stop info card + actions
-        if (widget.selectedStop != null)
-          Positioned(
-            bottom: 16,
-            left: 16,
-            right: 16,
-            child: Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12)),
-              margin: EdgeInsets.zero,
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Stop name & close
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Expanded(
-                          child: Text(
-                            widget.selectedStop!.name,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close),
-                          onPressed: widget.onClearSelectedStop,
-                          tooltip: 'close'.tr(),
-                        )
-                      ],
-                    ),
-
-                    const SizedBox(height: 12),
-
-                    // Directions & Routes buttons
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.directions, size: 18),
-                          label: Text('directions'.tr()),
-                          onPressed: widget.onDirections,
-                        ),
-                        ElevatedButton.icon(
-                          icon: const Icon(Icons.list, size: 18),
-                          label: Text('routes'.tr()),
-                          onPressed: () =>
-                              widget.onRoutes(widget.selectedStop!),
-                        ),
-                      ],
-                    ),
-
-                    // Distance / Duration info
-                    if (widget.routePoints.isNotEmpty &&
-                        widget.distanceLabel != null &&
-                        widget.durationLabel != null)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(widget.distanceLabel!,
-                                style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                            Text(widget.durationLabel!,
-                                style:
-                                const TextStyle(fontWeight: FontWeight.bold)),
-                            TextButton(
-                              onPressed: widget.onClearSelectedStop,
-                              child: const Text('Clear'),
-                            ),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-        // Loading indicator
-        if (widget.isLoading) const Center(child: CircularProgressIndicator()),
       ],
     );
   }
 
-  @override
-  bool get wantKeepAlive => true;
+  Widget _buildZoomControls() {
+    return Column(
+      children: [
+        FloatingActionButton(
+          heroTag: 'zoom_in',
+          mini: true,
+          onPressed: onZoomIn,
+          child: const Icon(Icons.add),
+        ),
+        const SizedBox(height: 4),
+        FloatingActionButton(
+          heroTag: 'zoom_out',
+          mini: true,
+          onPressed: onZoomOut,
+          child: const Icon(Icons.remove),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStepNavigationControls() {
+    return Row(
+      children: [
+        FloatingActionButton(
+          heroTag: 'prev_step',
+          mini: true,
+          onPressed: onPrevStep,
+          backgroundColor: onPrevStep == null ? Colors.grey[300] : null,
+          child: const Icon(Icons.arrow_back),
+        ),
+        const SizedBox(width: 8),
+        FloatingActionButton(
+          heroTag: 'next_step',
+          mini: true,
+          onPressed: onNextStep,
+          backgroundColor: onNextStep == null ? Colors.grey[300] : null,
+          child: const Icon(Icons.arrow_forward),
+        ),
+      ],
+    );
+  }
 }
 
+class StopInfoCard extends StatelessWidget {
+  final BusStop stop;
+  final VoidCallback onClose;
+  final VoidCallback onDirections;
+  final StopCallback onRoutes;
+  final List<osm.LatLng> routePoints;
+  final String? distanceLabel;
+  final String? durationLabel;
+
+  const StopInfoCard({
+    super.key,
+    required this.stop,
+    required this.onClose,
+    required this.onDirections,
+    required this.onRoutes,
+    required this.routePoints,
+    this.distanceLabel,
+    this.durationLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      bottom: 16,
+      left: 16,
+      right: 16,
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: EdgeInsets.zero,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Text(
+                      stop.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: onClose,
+                    tooltip: 'close'.tr(),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.directions, size: 18),
+                    label: Text('getDirections'.tr()),
+                    onPressed: onDirections,
+                  ),
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.list, size: 18),
+                    label: Text('routes'.tr()),
+                    onPressed: () => onRoutes(stop),
+                  ),
+                ],
+              ),
+              if (routePoints.isNotEmpty &&
+                  distanceLabel != null &&
+                  durationLabel != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 12),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        distanceLabel!,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        durationLabel!,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextButton(
+                        onPressed: onClose,
+                        child: const Text('Clear'),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

@@ -1,10 +1,12 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:injectable/injectable.dart';
 
 import '../../../domain/usecases/auth/request_password_reset_otp_usecase.dart';
 import '../../../domain/usecases/auth/reset_password_with_otp_usecase.dart';
 
 part 'password_state.dart';
 
+@injectable
 class PasswordCubit extends Cubit<PasswordState> {
   final RequestPasswordResetOtpUseCase _requestPasswordResetOtpUseCase;
   final ResetPasswordWithOtpUseCase _resetPasswordWithOtpUseCase;
@@ -12,16 +14,30 @@ class PasswordCubit extends Cubit<PasswordState> {
   PasswordCubit(
     this._requestPasswordResetOtpUseCase,
     this._resetPasswordWithOtpUseCase,
-  ) : super(PasswordInitial());
+  ) : super(PasswordEmailInputState());
 
   Future<void> requestPasswordResetOtp(String email) async {
     emit(PasswordLoading());
     try {
       await _requestPasswordResetOtpUseCase(email);
-      emit(PasswordRequestOtpSuccess());
+      emit(PasswordRequestOtpSuccess(email));
+      emit(PasswordOtpInputState(email));
     } catch (e) {
       emit(PasswordError(e.toString()));
+      emit(PasswordEmailInputState());
     }
+  }
+
+  void proceedToNewPasswordStep(String email, String otpCode) {
+    emit(PasswordNewPasswordInputState(email, otpCode));
+  }
+
+  void goBackToEmailInput() {
+    emit(PasswordEmailInputState());
+  }
+
+  void goBackToOtpInput(String email) {
+    emit(PasswordOtpInputState(email));
   }
 
   Future<void> resetPasswordWithOtp({
@@ -39,6 +55,7 @@ class PasswordCubit extends Cubit<PasswordState> {
       emit(PasswordResetSuccess());
     } catch (e) {
       emit(PasswordError(e.toString()));
+      emit(PasswordNewPasswordInputState(email, otpCode));
     }
   }
 }

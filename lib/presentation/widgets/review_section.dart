@@ -1,9 +1,9 @@
-import 'package:busmapcantho/services/notification_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:intl/intl.dart';
 
+import '../../core/services/notification_snackbar_service.dart';
 import '../../data/model/feedback.dart';
 import '../cubits/feedback/feedback_cubit.dart';
 import '../cubits/feedback/feedback_state.dart';
@@ -60,7 +60,7 @@ class _ReviewSectionState extends State<ReviewSection> {
       );
     }
     setState(() {});
-    NotificationService.showSuccess('Đã cập nhật đánh giá: ${_userRating.toInt()} sao');
+    context.showSuccessSnackBar('Đã cập nhật đánh giá: ${_userRating.toInt()} sao');
   }
 
   @override

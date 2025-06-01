@@ -11,6 +11,34 @@ class FeedbackRemoteDatasource {
   FeedbackRemoteDatasource([SupabaseClient? client])
     : _client = client ?? Supabase.instance.client;
 
+  // Generate a feedback ID with format fb_XXXX
+  Future<String> _generateFeedbackId() async {
+    try {
+      // Get the count of existing feedback to generate a new ID
+      final result = await _client
+          .from('feedback')
+          .select('id')
+          .order('created_at', ascending: false)
+          .limit(1);
+
+      int nextId = 1;
+      if (result.isNotEmpty) {
+        final lastId = result[0]['id'] as String;
+        // Extract numeric part, assuming format is fb_XXXX
+        final match = RegExp(r'fb_(\d+)').firstMatch(lastId);
+        if (match != null && match.groupCount >= 1) {
+          nextId = int.parse(match.group(1)!) + 1;
+        }
+      }
+
+      // Format with leading zeros
+      return 'fb_${nextId.toString().padLeft(4, '0')}';
+    } catch (e) {
+      // Fallback to timestamp-based ID if query fails
+      return 'fb_${DateTime.now().millisecondsSinceEpoch}';
+    }
+  }
+
   Future<void> submitFeedback({
     required String routeId,
     required int rating,
@@ -22,8 +50,12 @@ class FeedbackRemoteDatasource {
         throw Exception('Not authenticated');
       }
 
+      // Generate a new feedback ID
+      final feedbackId = await _generateFeedbackId();
+
       await _client.from('feedback').insert([
         {
+          'id': feedbackId,
           'route_id': routeId,
           'user_id': user.id,
           'rating': rating,
@@ -50,11 +82,11 @@ class FeedbackRemoteDatasource {
       final data = response as List<dynamic>;
       return data.map((item) {
         final m = item as Map<String, dynamic>;
-        final fullName = (m['users'] as Map<String, dynamic>)['full_name'];
-        return FeedbackModel.fromMap({
-          ...m,
-          'user_name': fullName,
-        });
+        final fullName =
+            (m['users'] != null && m['users'] is Map<String, dynamic>)
+                ? (m['users'] as Map<String, dynamic>)['full_name']
+                : null;
+        return FeedbackModel.fromMap({...m, 'user_name': fullName});
       }).toList();
     } catch (e) {
       debugPrint('Error fetching feedback: $e');
@@ -91,22 +123,11 @@ class FeedbackRemoteDatasource {
       if (user == null) {
         throw Exception('Not authenticated');
       }
-      final existing = await _client
-          .from('feedback')
-          .select()
-          .eq('id', feedbackId)
-          .eq('user_id', user.id)
-          .limit(1);
-      if (existing.isEmpty) {
-        throw Exception('Feedback not found or not owned by user');
-      }
+
+      // The RLS policy will ensure only the owner can update
       await _client
           .from('feedback')
-          .update({
-            'rating': rating,
-            'content': content,
-            'created_at': DateTime.now().toIso8601String(),
-          })
+          .update({'rating': rating, 'content': content})
           .eq('id', feedbackId);
     } catch (e) {
       throw Exception('Failed to update feedback: $e');

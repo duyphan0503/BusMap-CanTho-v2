@@ -25,12 +25,24 @@ class $AssetsAnimationsGen {
 class $AssetsImagesGen {
   const $AssetsImagesGen();
 
+  /// File path: assets/images/app_logo.png
+  AssetGenImage get appLogo =>
+      const AssetGenImage('assets/images/app_logo.png');
+
+  /// File path: assets/images/branding.png
+  AssetGenImage get branding =>
+      const AssetGenImage('assets/images/branding.png');
+
   /// File path: assets/images/bus.png
   AssetGenImage get bus => const AssetGenImage('assets/images/bus.png');
 
   /// File path: assets/images/bus_stops.png
   AssetGenImage get busStops =>
       const AssetGenImage('assets/images/bus_stops.png');
+
+  /// File path: assets/images/cantho_background.png
+  AssetGenImage get canthoBackground =>
+      const AssetGenImage('assets/images/cantho_background.png');
 
   /// File path: assets/images/default_avatar.png
   AssetGenImage get defaultAvatar =>
@@ -39,16 +51,24 @@ class $AssetsImagesGen {
   /// File path: assets/images/logo.png
   AssetGenImage get logo => const AssetGenImage('assets/images/logo.png');
 
+  /// File path: assets/images/logo_1024.png
+  AssetGenImage get logo1024 =>
+      const AssetGenImage('assets/images/logo_1024.png');
+
   /// File path: assets/images/my_location.png
   AssetGenImage get myLocation =>
       const AssetGenImage('assets/images/my_location.png');
 
   /// List of all assets
   List<AssetGenImage> get values => [
+    appLogo,
+    branding,
     bus,
     busStops,
+    canthoBackground,
     defaultAvatar,
     logo,
+    logo1024,
     myLocation,
   ];
 }
@@ -69,13 +89,9 @@ class $AssetsTranslationsGen {
 class Assets {
   const Assets._();
 
-  static const String aEnv = '.env';
   static const $AssetsAnimationsGen animations = $AssetsAnimationsGen();
   static const $AssetsImagesGen images = $AssetsImagesGen();
   static const $AssetsTranslationsGen translations = $AssetsTranslationsGen();
-
-  /// List of all assets
-  static List<String> get values => [aEnv];
 }
 
 class AssetGenImage {

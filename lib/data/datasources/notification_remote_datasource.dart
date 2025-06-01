@@ -30,27 +30,44 @@ class NotificationRemoteDatasource {
   }
 
   // Only for admin users
-  Future<void> sendNotification(String userId, String message) async {
+  Future<void> sendNotification(String message) async {
     try {
+      final user = _client.auth.currentUser;
+      if (user == null) {
+        throw Exception('User must be logged in to get notifications');
+      }
       await _client.from('notifications').insert({
-        'user_id': userId,
+        'id': 'notif_${DateTime.now().millisecondsSinceEpoch}',
+        'user_id': user.id,
         'message': message,
+        'sent_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
       throw Exception('Failed to send notification: $e');
     }
   }
 
-  Future<void> markNotificationAsRead(String notificationId) async {
-    try {
-      // If your schema doesn't have a 'read' field, you'd need to add it
-      // This example assumes you have or will add such a field
-      await _client
-          .from('notifications')
-          .update({'read': true})
-          .eq('id', notificationId);
-    } catch (e) {
-      throw Exception('Failed to mark notification as read: $e');
+  Future<void> deleteNotification(String notificationId) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw Exception('User not authenticated');
     }
+
+    await _client
+        .from('notifications')
+        .delete()
+        .match({'id': notificationId, 'user_id': userId});
+  }
+
+  Future<void> deleteAllNotifications() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+
+    await _client
+        .from('notifications')
+        .delete()
+        .match({'user_id': userId});
   }
 }

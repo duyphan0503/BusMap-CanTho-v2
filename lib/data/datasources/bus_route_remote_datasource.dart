@@ -1,7 +1,9 @@
+import 'package:busmapcantho/data/model/route_stop.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../model/bus_route.dart';
+import '../model/bus_stop.dart';
 
 @lazySingleton
 class BusRouteRemoteDatasource {
@@ -25,14 +27,25 @@ class BusRouteRemoteDatasource {
 
   Future<BusRoute> getBusRouteById(String id) async {
     try {
-      final response =
+      final routeData =
           await _client
               .from('routes')
               .select('*, agency:agencies(*)')
               .eq('id', id)
               .single();
 
-      return BusRoute.fromJson(response);
+      final stopsData = await _client
+          .from('route_stops')
+          .select('*, stop:stops(*)')
+          .eq('route_id', id)
+          .order('sequence');
+
+      final List<RouteStop> routeStops =
+          stopsData.map<RouteStop>((data) {
+            final busStop = BusStop.fromJson(data['stop']);
+            return RouteStop.fromJson(data, busStop);
+          }).toList();
+      return BusRoute.fromJson(routeData, stops: routeStops);
     } catch (e) {
       throw Exception('Failed to load bus route: $e');
     }

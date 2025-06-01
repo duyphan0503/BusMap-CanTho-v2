@@ -8,7 +8,7 @@ import '../model/bus_stop.dart';
 class BusStopRepository {
   final BusStopRemoteDatasource _remoteDatasource;
   final RouteStopRemoteDatasource _routeStopDatasource;
-  
+
   BusStopRepository(this._remoteDatasource, this._routeStopDatasource);
 
   Future<List<BusStop>> getAllBusStops() {
@@ -24,19 +24,38 @@ class BusStopRepository {
   }
 
   Future<List<BusStop>> getBusStopsByRouteId(String routeId) async {
-    final routeStops = await _routeStopDatasource.getRouteStops(routeId, 0); // Direction 0
-    return routeStops.map((routeStop) => routeStop.stop).toList();
-  }
-  
-  Future<List<BusStop>> getBusStopsByRouteIdAndDirection(String routeId, int direction) async {
-    final routeStops = await _routeStopDatasource.getRouteStops(routeId, direction);
+    final routeStops = await _routeStopDatasource.getRouteStops(
+      routeId,
+      0,
+    ); // Direction 0
     return routeStops.map((routeStop) => routeStop.stop).toList();
   }
 
-  Future<List<BusStop>> getNearbyBusStops(double lat, double lng, double radiusInMeters) {
-    return _remoteDatasource.getNearbyBusStops(lat, lng, radiusInMeters);
+  Future<List<BusStop>> getBusStopsByRouteIdAndDirection(
+    String routeId,
+    int direction,
+  ) async {
+    final routeStops = await _routeStopDatasource.getRouteStops(
+      routeId,
+      direction,
+    );
+    return routeStops.map((routeStop) => routeStop.stop).toList();
   }
-  
+
+  Future<List<BusStop>> getNearbyBusStops(
+      double lat,
+      double lng,
+      double radiusInMeters, {
+        int limit = 10,
+        int offset = 0,
+      }) => _remoteDatasource.getNearbyBusStops(
+    lat,
+    lng,
+    radiusInMeters,
+    limit: limit,
+    offset: offset,
+  );
+
   Future<List<BusStop>> searchBusStops(String query) {
     return _remoteDatasource.searchBusStops(query);
   }

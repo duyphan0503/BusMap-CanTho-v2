@@ -8,3 +8,8 @@ const iosClientId = "809736660329-3rf07tbpikks6d72ci25145rojqodjtl.apps.googleus
 
 // Google Maps API Key
 const String googleMapsApiKey = "AIzaSyB0iYB9i303tIw0ZN5pSJEq_d3w-ivI9FI";
+
+// GraphHopper API Key
+const String graphhopperBaseUrl = 'https://graphhopper.com/api/1/route';
+const String osrmBaseUrl = 'https://router.project-osrm.org/route/v1';
+const String graphhopperApiKey = "6cef4f8c-c9b5-43f5-944a-82186cf49697";

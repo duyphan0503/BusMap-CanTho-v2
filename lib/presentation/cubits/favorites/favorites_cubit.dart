@@ -7,6 +7,10 @@ import 'package:busmapcantho/domain/usecases/favorite/remove_favorite_usecase.da
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:busmapcantho/data/model/bus_route.dart';
+import 'package:busmapcantho/data/model/bus_stop.dart';
+import 'package:busmapcantho/domain/usecases/bus_routes/get_bus_route_by_id_usecase.dart';
+import 'package:busmapcantho/domain/usecases/bus_stops/get_bus_stop_by_id_usecase.dart';
 
 part 'favorites_state.dart';
 
@@ -17,6 +21,8 @@ class FavoritesCubit extends Cubit<FavoritesState> {
   final AddFavoriteRouteUseCase _addFavoriteRouteUseCase;
   final AddFavoriteStopUseCase _addFavoriteStopUseCase;
   final RemoveFavoriteUseCase _removeFavoriteUseCase;
+  final GetBusRouteByIdUseCase _getBusRouteByIdUseCase;
+  final GetBusStopByIdUseCase _getBusStopByIdUseCase;
 
   FavoritesCubit(
     this._getFavoriteRoutesUseCase,
@@ -24,6 +30,8 @@ class FavoritesCubit extends Cubit<FavoritesState> {
     this._addFavoriteRouteUseCase,
     this._addFavoriteStopUseCase,
     this._removeFavoriteUseCase,
+    this._getBusRouteByIdUseCase,
+    this._getBusStopByIdUseCase,
   ) : super(const FavoritesState());
 
   Future<void> loadAllFavorites() async {
@@ -35,7 +43,13 @@ class FavoritesCubit extends Cubit<FavoritesState> {
         stopsError: null,
       ),
     );
-    await Future.wait([loadFavoriteRoutes(), loadFavoriteStops()]);
+    await Future.wait([
+      loadFavoriteRoutes(),
+      loadFavoriteStops(),
+    ]);
+    // Sau khi đã có danh sách id, lấy chi tiết
+    await _loadFavoriteRoutesDetail();
+    await _loadFavoriteStopsDetail();
   }
 
   Future<void> loadFavoriteRoutes() async {
@@ -68,6 +82,26 @@ class FavoritesCubit extends Cubit<FavoritesState> {
     } catch (e) {
       emit(state.copyWith(isLoadingStops: false, stopsError: e.toString()));
     }
+  }
+
+  Future<void> _loadFavoriteRoutesDetail() async {
+    final ids = state.favoriteUserRoutes.map((e) => e.routeId).whereType<String>().toList();
+    final List<BusRoute> details = [];
+    for (final id in ids) {
+      final route = await _getBusRouteByIdUseCase(id);
+      if (route != null) details.add(route);
+    }
+    emit(state.copyWith(favoriteRoutesDetail: details));
+  }
+
+  Future<void> _loadFavoriteStopsDetail() async {
+    final ids = state.favoriteStops.map((e) => e.stopId).whereType<String>().toList();
+    final List<BusStop> details = [];
+    for (final id in ids) {
+      final stop = await _getBusStopByIdUseCase(id);
+      if (stop != null) details.add(stop);
+    }
+    emit(state.copyWith(favoriteStopsDetail: details));
   }
 
   Future<void> addFavoriteRoute(String routeId, {String? label}) async {
@@ -104,7 +138,7 @@ class FavoritesCubit extends Cubit<FavoritesState> {
 
   Future<void> addFavoriteStop({
     required String stopId,
-    required String label,
+    String? label,
   }) async {
     try {
       await _addFavoriteStopUseCase(stopId: stopId, label: label);

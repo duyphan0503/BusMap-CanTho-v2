@@ -8,5 +8,6 @@ class ChangePasswordUseCase {
 
   ChangePasswordUseCase(this._repo);
 
-  Future<void> call(String newPassword) => _repo.changePassword(newPassword);
+  Future<void> call({required String oldPassword, required String newPassword}) =>
+      _repo.changePassword(oldPassword, newPassword);
 }

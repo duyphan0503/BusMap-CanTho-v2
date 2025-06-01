@@ -15,7 +15,7 @@ class RouteStopRemoteDatasource {
     try {
       final response = await _client
           .from('route_stops')
-          .select('*, stop:stops(*)')
+          .select('id, route_id, stop_id, sequence, direction, created_at, updated_at, stop:stops(*)')
           .eq('route_id', routeId)
           .eq('direction', direction)
           .order('sequence');
@@ -33,9 +33,8 @@ class RouteStopRemoteDatasource {
     try {
       final response = await _client
           .from('route_stops')
-          .select('route_id')
-          .eq('stop_id', stopId)
-          .order('route_id');
+          .select('route_id, direction')
+          .eq('stop_id', stopId);
       
       // Extract unique route IDs
       return response
@@ -44,6 +43,30 @@ class RouteStopRemoteDatasource {
           .toList();
     } catch (e) {
       throw Exception('Failed to load routes for stop: $e');
+    }
+  }
+
+  // New method to get specific route-stop combination
+  Future<RouteStop?> getRouteStop(String routeId, String stopId, int direction) async {
+    try {
+      final response = await _client
+          .from('route_stops')
+          .select('id, route_id, stop_id, sequence, direction, created_at, updated_at, stop:stops(*)')
+          .eq('route_id', routeId)
+          .eq('stop_id', stopId)
+          .eq('direction', direction)
+          .single();
+
+      if (response == null) return null;
+
+      final stop = BusStop.fromJson(response['stop']);
+      return RouteStop.fromJson(response, stop);
+    } catch (e) {
+      if (e is PostgrestException && e.code == 'PGRST116') {
+        // No rows returned
+        return null;
+      }
+      throw Exception('Failed to load route stop: $e');
     }
   }
 }

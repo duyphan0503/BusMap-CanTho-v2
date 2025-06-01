@@ -60,8 +60,8 @@ class AuthRepositoryImpl implements AuthRepository {
       _remote.updateProfileImage(file);
 
   @override
-  Future<void> changePassword(String newPassword) =>
-      _remote.changePassword(newPassword);
+  Future<void> changePassword(String oldPassword, String newPassword) =>
+      _remote.changePassword(oldPassword, newPassword);
 
   @override
   Future<User?> getCurrentUser() => _remote.getCurrentUser();
