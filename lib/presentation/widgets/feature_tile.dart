@@ -1,5 +1,6 @@
 import 'package:busmapcantho/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
+import '../widgets/marquee_text.dart';
 
 class FeatureTile extends StatelessWidget {
   final IconData icon;
@@ -62,16 +63,16 @@ class FeatureTile extends StatelessWidget {
             ),
             const SizedBox(height: 8),
             Flexible(
-              child: Text(
-                label,
-                style:
-                    labelStyle ??
+              child: MarqueeText(
+                text: label,
+                style: labelStyle ??
                     theme.textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                velocity: 30,
+                pauseBetweenLoops: const Duration(seconds: 1),
+                initialDelay: const Duration(milliseconds: 500),
+                gapWidth: 30,
               ),
             ),
           ],

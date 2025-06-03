@@ -18,15 +18,17 @@ import '../../routes/app_routes.dart';
 class MapScreen extends StatefulWidget {
   final bool showBackButton;
   final List<osm.LatLng> routePoints;
-  final osm.LatLng? startLocation; // Add start location parameter
-  final osm.LatLng? endLocation;   // Add end location parameter
+  final osm.LatLng? startLocation;
+  final osm.LatLng? endLocation;
+  final String? selectedStopId;
 
   const MapScreen({
     super.key,
     this.showBackButton = false,
     this.routePoints = const [],
-    this.startLocation,           // Add to constructor
-    this.endLocation,             // Add to constructor
+    this.startLocation,
+    this.endLocation,
+    this.selectedStopId,
   });
 
   @override
@@ -36,20 +38,21 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen>
     with AutomaticKeepAliveClientMixin {
   static const _canThoCenter = osm.LatLng(10.025817, 105.7470982);
-  static const _debounceDuration = Duration(milliseconds: 500);
+  /*static const _debounceDuration = Duration(milliseconds: 500);*/
 
   late final MapBloc _mapBloc;
   late final StopCubit _stopCubit;
   Timer? _debounceTimer;
+  BusStop? _initialAnimateStop;
 
   @override
   void initState() {
     super.initState();
     _mapBloc = getIt<MapBloc>()..add(InitializeMap());
     _stopCubit = getIt<StopCubit>();
+    _stopCubit.fetchAllStops();
 
-    // Listen to MapBloc state changes and debounce visibleBounds updates
-    _mapBloc.stream.listen((mapState) {
+    /*_mapBloc.stream.listen((mapState) {
       if (mapState is MapLoaded) {
         if (_debounceTimer?.isActive ?? false) {
           _debounceTimer?.cancel();
@@ -59,8 +62,24 @@ class _MapScreenState extends State<MapScreen>
             _stopCubit.fetchStopsByBounds(mapState.visibleBounds);
           }
         });
+
+        // Chỉ chọn stop và animate đến stop khi vừa mở màn hình và chỉ 1 lần
+        if (widget.selectedStopId != null && !_hasAnimatedToStop) {
+          final stopState = _stopCubit.state;
+          final stops = (stopState is StopLoaded) ? stopState.stops : <BusStop>[];
+          final selectedList = stops.where((s) => s.id == widget.selectedStopId).toList();
+          if (selectedList.isNotEmpty) {
+            _mapBloc.add(SelectBusStop(selectedList.first));
+            // Đánh dấu đã animate để không lặp lại
+            _hasAnimatedToStop = true;
+            // Gửi animateToStop cho BusMapWidget qua setState
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              setState(() {});
+            });
+          }
+        }
       }
-    });
+    });*/
   }
 
   @override
@@ -88,6 +107,26 @@ class _MapScreenState extends State<MapScreen>
             builder: (ctx, mapState) {
               return BlocBuilder<StopCubit, StopState>(
                 builder: (ctx, stopState) {
+                  final stops = (stopState is StopLoaded)
+                      ? List<BusStop>.from(stopState.stops)
+                      : <BusStop>[];
+
+                  // once stops are loaded, find and select the favorite stop
+                  if (_initialAnimateStop == null &&
+                      widget.selectedStopId != null &&
+                      stops.isNotEmpty) {
+                    final found = stops.firstWhere(
+                      (s) => s.id == widget.selectedStopId,
+                    );
+                    // dispatch select event
+                    _mapBloc.add(SelectBusStop(found));
+                    _initialAnimateStop = found;
+                    // rebuild to pass animateToStop
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      setState(() {});
+                    });
+                                    }
+
                   final isLoading =
                       (mapState is MapLoading || mapState is MapInitial) ||
                       (stopState is StopLoading);
@@ -97,12 +136,6 @@ class _MapScreenState extends State<MapScreen>
                       mapState is MapLoaded
                           ? mapState.currentPosition
                           : _canThoCenter;
-
-                  // Sử dụng _visibleStops từ StopCubit
-                  final stops =
-                      stopState is StopLoaded
-                          ? List<BusStop>.from(stopState.stops)
-                          : <BusStop>[];
 
                   return Stack(
                     children: [
@@ -116,7 +149,8 @@ class _MapScreenState extends State<MapScreen>
                             () => _mapBloc.add(ClearSelectedBusStop()),
                         refreshStops: () {
                           if (mapState is MapLoaded) {
-                            _stopCubit.fetchStopsByBounds(mapState.visibleBounds);
+                            /*_stopCubit.fetchStopsByBounds(mapState.visibleBounds);*/
+                            _stopCubit.fetchAllStops();
                           }
                         },
                         onCenterUser: () {
@@ -139,8 +173,9 @@ class _MapScreenState extends State<MapScreen>
                         onMapMoved:
                             (bounds) => _mapBloc.add(UpdateVisibleBounds(bounds)),
                         routePoints: widget.routePoints,
-                        startLocation: widget.startLocation, // Pass start location
-                        endLocation: widget.endLocation,     // Pass end location
+                        startLocation: widget.startLocation,
+                        endLocation: widget.endLocation,
+                        animateToStop: _initialAnimateStop,
                       ),
                       if (stopState is StopError)
                         Positioned(
@@ -169,16 +204,16 @@ class _MapScreenState extends State<MapScreen>
         ),
         if (widget.showBackButton)
           Positioned(
-            top: MediaQuery.of(context).padding.top + 8,
+            top: 0,
             left: 8,
             child: SafeArea(
               child: CircleAvatar(
-                backgroundColor: Colors.white,
+                backgroundColor: Theme.of(context).colorScheme.primary,
                 child: IconButton(
                   icon: const Icon(Icons.arrow_back),
                   onPressed: () => context.go(AppRoutes.home),
                   tooltip: MaterialLocalizations.of(context).backButtonTooltip,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: Colors.white,
                 ),
               ),
             ),
@@ -190,3 +225,4 @@ class _MapScreenState extends State<MapScreen>
   @override
   bool get wantKeepAlive => true;
 }
+

@@ -89,9 +89,13 @@ class $AssetsTranslationsGen {
 class Assets {
   const Assets._();
 
+  static const String license = 'LICENSE';
   static const $AssetsAnimationsGen animations = $AssetsAnimationsGen();
   static const $AssetsImagesGen images = $AssetsImagesGen();
   static const $AssetsTranslationsGen translations = $AssetsTranslationsGen();
+
+  /// List of all assets
+  static List<String> get values => [license];
 }
 
 class AssetGenImage {

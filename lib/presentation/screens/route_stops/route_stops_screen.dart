@@ -14,6 +14,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:get_it/get_it.dart';
+import 'package:busmapcantho/core/services/notification_local_service.dart';
 
 import '../../routes/app_routes.dart';
 
@@ -29,12 +30,18 @@ class RouteStopsScreen extends StatefulWidget {
 class _RouteStopsScreenState extends State<RouteStopsScreen>
     with SingleTickerProviderStateMixin {
   late final TabController _tabController;
-  static const _tabBarHeight = 70.0;
+  static const _tabBarHeight = 60.0;
   static const _bottomButtonHeight = 72.0;
 
   @override
   void initState() {
     super.initState();
+
+    // Initialize the local notifications plugin
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationLocalService().init(context);
+    });
+
     _tabController = TabController(length: 2, vsync: this);
     context.read<RouteStopsCubit>().loadRoutesForStop(widget.stop);
   }
@@ -67,34 +74,50 @@ class _RouteStopsScreenState extends State<RouteStopsScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      extendBodyBehindAppBar: true,
-      appBar: _buildAppBar(context),
-      body: BlocBuilder<RouteStopsCubit, RouteStopsState>(
-        builder: (context, state) {
-          final routes =
-              state is RouteStopsLoaded ? state.routes : <BusRoute>[];
-          final buses =
-              state is RouteStopsLoaded ? state.vehicles : <BusLocation>[];
-
-          return Column(
-            children: [
-              const SizedBox(height: _tabBarHeight + 24),
-              _RouteTabBar(controller: _tabController),
-              Expanded(
-                child: TabBarView(
-                  controller: _tabController,
-                  children: [
-                    _RouteList(routes: routes),
-                    _BusList(buses: buses),
-                  ],
-                ),
-              ),
-            ],
+    return BlocListener<NotificationCubit, NotificationState>(
+      listener: (context, state) {
+        if (state is NotificationTriggered) {
+          final msg = state.message;
+          // show a system notification
+          NotificationLocalService().showNotification(
+            title: widget.stop.name,
+            body: msg,
           );
-        },
+          // also show in-app snackbar
+          context.showSuccessSnackBar(msg);
+        } else if (state is NotificationError) {
+          context.showErrorSnackBar(state.message);
+        }
+      },
+      child: Scaffold(
+        extendBodyBehindAppBar: true,
+        appBar: _buildAppBar(context),
+        body: BlocBuilder<RouteStopsCubit, RouteStopsState>(
+          builder: (context, state) {
+            final routes =
+                state is RouteStopsLoaded ? state.routes : <BusRoute>[];
+            final buses =
+                state is RouteStopsLoaded ? state.vehicles : <BusLocation>[];
+
+            return Column(
+              children: [
+                const SizedBox(height: _tabBarHeight + 40),
+                _RouteTabBar(controller: _tabController),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _RouteList(routes: routes),
+                      _BusList(buses: buses),
+                    ],
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        bottomNavigationBar: _buildBottomButtons(context),
       ),
-      bottomNavigationBar: _buildBottomButtons(context),
     );
   }
 
@@ -104,7 +127,7 @@ class _RouteStopsScreenState extends State<RouteStopsScreen>
       child: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: AppColors.primaryGradient,
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
         ),
         child: AppBar(
           backgroundColor: Colors.transparent,
@@ -306,6 +329,12 @@ class _MonitorButton extends StatelessWidget {
       context.showSuccessSnackBar(
         tr('monitorSuccessMessage', args: [labels[index]]),
       );
+      
+      // Chỉ cập nhật thông báo bắt đầu theo dõi
+      NotificationLocalService().showNotification(
+        title: 'Bắt đầu theo dõi',
+        body: 'Đang theo dõi xe buýt tuyến ${routes.first.routeNumber}. Sẽ thông báo khi xe đến trạm ${stop.name} trong khoảng cách ${labels[index]}',
+      );
     } catch (e) {
       context.showErrorSnackBar('Failed to set up monitoring: ${e.toString()}');
     }
@@ -384,6 +413,12 @@ class _ReportButton extends StatelessWidget {
 
       context.showSuccessSnackBar(
         tr('reportSuccessMessage', args: [labels[index]]),
+      );
+      
+      // Add a notification to let the user know reporting has started
+      NotificationLocalService().showNotification(
+        title: 'Bắt đầu theo dõi thời gian',
+        body: 'Đang theo dõi xe buýt tuyến ${routes.first.routeNumber} sẽ đến trạm ${stop.name} trong ${labels[index]}',
       );
     } catch (e) {
       context.showErrorSnackBar('Failed to set up reporting: ${e.toString()}');

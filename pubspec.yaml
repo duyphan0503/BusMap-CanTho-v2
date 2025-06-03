@@ -68,6 +68,7 @@ dependencies:
   path: ^1.9.1
   path_provider: ^2.1.5
   salomon_bottom_bar: ^3.3.2
+  flutter_sliding_up_panel: ^2.1.1
 
   qr_flutter: ^4.1.0
 
@@ -100,6 +101,7 @@ flutter:
     - assets/translations/
     - assets/images/
     - assets/animations/
+    - LICENSE
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

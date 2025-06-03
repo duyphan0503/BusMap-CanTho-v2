@@ -18,7 +18,6 @@ class AuthCubit extends Cubit<AuthState> {
   final SignInUseCase _signInUseCase;
   final GoogleSignInNativeUseCase _googleSignInNativeUseCase;
   final SignOutUseCase _signOutUseCase;
-  StreamSubscription? _authStateSubscription;
 
   AuthCubit(
       this._getCurrentUserUseCase,
@@ -28,27 +27,15 @@ class AuthCubit extends Cubit<AuthState> {
       this._signOutUseCase,
       ) : super(AuthInitial()) {
     _checkAuth();
-    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-      final event = data.event;
-      if (event == AuthChangeEvent.signedOut) {
-        if (state is! AuthUnauthenticated) emit(AuthUnauthenticated());
-      } else if (event == AuthChangeEvent.signedIn ||
-          event == AuthChangeEvent.tokenRefreshed ||
-          event == AuthChangeEvent.userUpdated) {
-        _checkAuth();
-      }
-    });
   }
 
   Future<void> _checkAuth() async {
     if (state is! AuthAuthenticated) {
-      // Avoid emitting loading if already authenticated to prevent UI flicker on token refresh
       emit(AuthLoading());
     }
     try {
       final user = await _getCurrentUserUseCase();
       if (user != null) {
-        // Only emit if the user is different or the state is not AuthAuthenticated
         if (state is! AuthAuthenticated || (state as AuthAuthenticated).user.id != user.id) {
           emit(AuthAuthenticated(user));
         }
@@ -78,7 +65,7 @@ class AuthCubit extends Cubit<AuthState> {
     emit(AuthLoading());
     try {
       await _signInUseCase(email, password);
-      await _checkAuth(); // Re-check auth after sign-in attempt
+      await _checkAuth();
     } catch (e) {
       emit(AuthError(e.toString()));
     }
@@ -88,7 +75,7 @@ class AuthCubit extends Cubit<AuthState> {
     emit(AuthLoading());
     try {
       await _googleSignInNativeUseCase();
-      await _checkAuth(); // Re-check auth after Google sign-in attempt
+      await _checkAuth();
     } catch (e) {
       emit(AuthError(e.toString()));
     }
@@ -98,22 +85,13 @@ class AuthCubit extends Cubit<AuthState> {
     emit(AuthLoading());
     try {
       await _signOutUseCase();
-      // onAuthStateChange listener will handle emitting AuthUnauthenticated
     } catch (_) {
-      // Even if sign out fails on the server, treat as unauthenticated locally.
       if (state is! AuthUnauthenticated) {
         emit(AuthUnauthenticated());
       }
     }
-    // Ensure unauthenticated state is emitted if not already handled by listener quickly enough
     if (state is! AuthUnauthenticated) {
        emit(AuthUnauthenticated());
     }
-  }
-
-  @override
-  Future<void> close() {
-    _authStateSubscription?.cancel();
-    return super.close();
   }
 }

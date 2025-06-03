@@ -171,9 +171,7 @@ class SignUpScreenState extends State<SignUpScreen> {
           context.showSuccessSnackBar('verificationEmailSentMessage'.tr());
           context.go(AppRoutes.verify, extra: {"email": _emailController.text});
         } else if (state is AuthError) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(SnackBar(content: Text(state.error)));
+          context.showErrorSnackBar(state.error);
         }
       },
       builder: (context, state) {

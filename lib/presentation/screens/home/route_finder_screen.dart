@@ -9,7 +9,6 @@ import 'package:geolocator/geolocator.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart';
 
-import '../../../core/di/injection.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../widgets/gradient_border_widget.dart';
 
@@ -51,11 +50,37 @@ class _RouteFinderView extends StatefulWidget {
 class _RouteFinderViewState extends State<_RouteFinderView> {
   late final RouteFinderCubit _cubit;
   int _maxRoutes = 1; // Default max routes
+  bool _initialized = false;
 
   @override
   void initState() {
     super.initState();
-    _cubit = context.read<RouteFinderCubit>()..resetSelection();
+    _cubit = context.read<RouteFinderCubit>();
+    if (!_initialized) {
+      _cubit.resetSelection();
+      _initializeLocation();
+      _initialized = true;
+    }
+  }
+
+  @override
+  void dispose() {
+    _cubit.resetRoute();            // clear line + locations when leaving
+    super.dispose();
+  }
+
+  Future<void> _initializeLocation() async {
+    if (_cubit.state.startLatLng == null && _cubit.state.startName == null) {
+      try {
+        final pos = await Geolocator.getCurrentPosition();
+        final userLocation = LatLng(pos.latitude, pos.longitude);
+        if (mounted) {
+          _cubit.setInitialLocation(userLocation, 'currentLocationPlaceholder'.tr());
+        }
+      } catch (_) {
+        // Handle location error if needed
+      }
+    }
   }
 
   String _getShortName(String? description) {
@@ -268,16 +293,14 @@ class _RouteFinderViewState extends State<_RouteFinderView> {
     return SizedBox(
       width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {
-        },
+        onPressed: () {},
         style: ElevatedButton.styleFrom(
           backgroundColor: Theme.of(context).colorScheme.primary,
           foregroundColor: Theme.of(context).colorScheme.onPrimary,
           padding: const EdgeInsets.symmetric(vertical: 12),
-          textStyle: Theme.of(context)
-              .textTheme
-              .titleMedium
-              ?.copyWith(fontWeight: FontWeight.bold),
+          textStyle: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
         child: Text('findWay'.tr()),
       ),
@@ -295,7 +318,7 @@ class _RouteFinderViewState extends State<_RouteFinderView> {
           child: MapScreen(
             routePoints: state.routeLine,
             startLocation: state.startLatLng, // Pass start location
-            endLocation: state.endLatLng,     // Pass end location
+            endLocation: state.endLatLng, // Pass end location
           ),
         ),
       ),
@@ -321,10 +344,10 @@ class _RouteFinderViewState extends State<_RouteFinderView> {
           border: Border.all(color: theme.primaryColor, width: 1.5),
         ),
         child: GradientBorderWidget(
-          borderColor: colorScheme.secondary,
+          borderColor: AppColors.primaryLightest,
           borderWidth: 2,
           borderRadius: 8,
-          gradientWidth: 30,
+          gradientWidth: 26,
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
             child: Row(

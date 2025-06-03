@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:busmapcantho/core/services/notification_snackbar_service.dart';
 import 'package:busmapcantho/core/services/places_service.dart';
@@ -30,7 +31,7 @@ class _SearchScreenState extends State<SearchScreen> {
   final PlacesService _placesService = getIt<PlacesService>();
 
   List<NominatimPlace> _suggestions = [];
-  List<String> _history = [];
+  List<NominatimPlace> _history = [];
   Timer? _debounce;
   bool _isLoading = false;
 
@@ -55,18 +56,36 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Future<void> _loadHistory() async {
     final prefs = await SharedPreferences.getInstance();
-    _history = prefs.getStringList(_historyKey) ?? [];
+    final raw = prefs.getStringList(_historyKey) ?? [];
+    _history =
+        raw.map((e) {
+          final m = jsonDecode(e);
+          return NominatimPlace(
+            displayName: m['displayName'],
+            lat: m['lat'],
+            lon: m['lon'],
+            address: null,
+          );
+        }).toList();
     setState(() {});
   }
 
-  Future<void> _saveHistory(String description) async {
+  Future<void> _saveHistory(NominatimPlace place) async {
     final prefs = await SharedPreferences.getInstance();
-    _history.remove(description);
-    _history.insert(0, description);
-    if (_history.length > 10) {
-      _history = _history.sublist(0, 10);
-    }
-    await prefs.setStringList(_historyKey, _history);
+    _history.removeWhere((h) => h.displayName == place.displayName);
+    _history.insert(0, place);
+    if (_history.length > 10) _history = _history.sublist(0, 10);
+    final raw =
+        _history
+            .map(
+              (h) => jsonEncode({
+                'displayName': h.displayName,
+                'lat': h.lat,
+                'lon': h.lon,
+              }),
+            )
+            .toList();
+    await prefs.setStringList(_historyKey, raw);
     setState(() {});
   }
 
@@ -85,10 +104,8 @@ class _SearchScreenState extends State<SearchScreen> {
   Future<void> _fetchSuggestions(String query) async {
     setState(() => _isLoading = true);
     try {
-      // Tìm kiếm địa điểm từ API
       final places = await _placesService.searchPlaces(query);
 
-      // Hiển thị gợi ý từ lịch sử nếu không có kết quả tìm kiếm
       if (places.isEmpty) {
         final historySuggestions = _getHistorySuggestions(query);
         setState(() {
@@ -116,53 +133,65 @@ class _SearchScreenState extends State<SearchScreen> {
     }
   }
 
-  // Lấy gợi ý từ lịch sử dựa trên truy vấn
   List<NominatimPlace> _getHistorySuggestions(String query) {
     final queryLower = query.toLowerCase();
     final matchingHistory =
         _history
-            .where((item) => item.toLowerCase().contains(queryLower))
+            .where(
+              (item) => item.displayName.toLowerCase().contains(queryLower),
+            )
             .toList();
 
-    // Tạo các đối tượng NominatimPlace từ lịch sử phù hợp
     return matchingHistory
         .map(
           (desc) => NominatimPlace(
-            displayName: desc,
-            lat: 0, // Thông tin vị trí không có sẵn từ lịch sử
-            lon: 0,
+            displayName: desc.displayName,
+            lat: desc.lat,
+            lon: desc.lon,
           ),
         )
         .toList();
   }
 
   Future<void> _onSuggestionTap(NominatimPlace place) async {
+    await _saveHistory(place);
     final selectionType = _routeFinderCubit.state.selectionType;
+    final latLng = place.toLatLng;
 
-    if (selectionType != LocationSelectionType.none) {
-      final latLng = place.toLatLng;
+    if (selectionType == LocationSelectionType.start) {
+      _routeFinderCubit.setStart(name: place.displayName, latLng: latLng);
+    } else {
+      _routeFinderCubit.setEnd(name: place.displayName, latLng: latLng);
+    }
+    _routeFinderCubit.resetSelection();
 
-      if (selectionType == LocationSelectionType.start) {
-        _routeFinderCubit.setStart(name: place.displayName, latLng: latLng);
+    if (mounted) {
+      if (selectionType == LocationSelectionType.start ||
+          selectionType == LocationSelectionType.end) {
+        context.pop();
       } else {
-        _routeFinderCubit.setEnd(name: place.displayName, latLng: latLng);
+        context.push(AppRoutes.routeFinder);
       }
-
-      // Reset selection type sau khi chọn
-      _routeFinderCubit.resetSelection();
-      context.pop();
     }
   }
 
-  void _onHistoryTap(String desc) {
+  void _onHistoryTap(NominatimPlace place) {
+    final selectionType = _routeFinderCubit.state.selectionType;
+    final latLng = place.toLatLng;
+
+    if (selectionType == LocationSelectionType.start) {
+      _routeFinderCubit.setStart(name: place.displayName, latLng: latLng);
+    } else {
+      _routeFinderCubit.setEnd(name: place.displayName, latLng: latLng);
+    }
+    _routeFinderCubit.resetSelection();
+
     if (mounted) {
-      final selectionType = _routeFinderCubit.state.selectionType;
-      if (selectionType == LocationSelectionType.start) {
-        _routeFinderCubit.setStart(name: desc, latLng: null);
-      } else if (selectionType == LocationSelectionType.end) {
-        _routeFinderCubit.setEnd(name: desc, latLng: null);
+      if (selectionType != LocationSelectionType.none) {
+        context.pop();
+      } else {
+        context.push(AppRoutes.routeFinder);
       }
-      context.pop(); // Pop back to RouteFinderScreen
     }
   }
 
@@ -452,9 +481,15 @@ class _SearchScreenState extends State<SearchScreen> {
             elevation: 2,
           ),
           onPressed: () async {
-            await context.push(AppRoutes.pickLocationOnMap);
-            if (mounted && selectionType != LocationSelectionType.none) {
-              context.pop();
+            final result = await context.push<bool?>(
+              AppRoutes.pickLocationOnMap,
+            );
+            if (mounted && result == true) {
+              if (selectionType != LocationSelectionType.none) {
+                context.pop();
+              } else {
+                context.go(AppRoutes.routeFinder);
+              }
             }
           },
         ),
@@ -712,14 +747,14 @@ class _SearchScreenState extends State<SearchScreen> {
       separatorBuilder:
           (_, __) => Divider(height: 1, color: AppColors.dividerColor),
       itemBuilder: (context, index) {
-        final desc = _history[index];
+        final place = _history[index];
         return ListTile(
           leading: const Icon(Icons.history, color: AppColors.primaryMedium),
           title: Text(
-            _getAbbreviatedName(desc),
+            _getAbbreviatedName(place.displayName),
             style: theme.textTheme.bodyLarge,
           ),
-          onTap: () => _onHistoryTap(desc),
+          onTap: () => _onHistoryTap(place),
         );
       },
     );
@@ -735,7 +770,6 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   String _formatStructuredAddress(Address address) {
-    // Tạo danh sách các phần của địa chỉ theo thứ tự mong muốn
     final List<String> parts = [];
 
     // 1. Số nhà (house_number) nếu có

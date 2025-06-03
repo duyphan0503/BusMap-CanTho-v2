@@ -7,10 +7,19 @@ import 'package:latlong2/latlong.dart';
 class RouteFinderCubit extends Cubit<RouteFinderState> {
   RouteFinderCubit() : super(RouteFinderState.initial());
 
-  void setInitialLocation(LatLng? userLocation) {
+  void setInitialLocation(LatLng? userLocation, [String? translatedName]) {
     if (userLocation != null && state.startLatLng == null && state.startName == null) {
-      emit(state.copyWith(startLatLng: userLocation, startName: 'Vị trí của bạn'));
+      emit(state.copyWith(
+        startLatLng: userLocation,
+        startName: translatedName
+      ));
+      _drawLineIfReady();
     }
+  }
+
+  // Clear all route data
+  void resetRoute() {
+    emit(RouteFinderState.initial());
   }
 
   void setStart({String? name, LatLng? latLng}) {
@@ -65,6 +74,11 @@ class RouteFinderCubit extends Cubit<RouteFinderState> {
   void _drawLineIfReady() {
     if (state.startLatLng != null && state.endLatLng != null) {
       emit(state.copyWith(routeLine: [state.startLatLng!, state.endLatLng!]));
+    } else if (state.startName != null && state.endName != null) {
+      final List<LatLng> partialLine = [];
+      if (state.startLatLng != null) partialLine.add(state.startLatLng!);
+      if (state.endLatLng != null) partialLine.add(state.endLatLng!);
+      emit(state.copyWith(routeLine: partialLine));
     } else {
       emit(state.copyWith(routeLine: []));
     }

@@ -73,7 +73,7 @@ class HomeScreen extends StatelessWidget {
             ),
             child: Column(
               children: [
-                const SizedBox(height: _appBarHeight + 16),
+                const SizedBox(height: _appBarHeight + 24),
                 _SearchBar(onTap: () => context.push(AppRoutes.search)),
                 _FeatureSection(
                   features: features,
@@ -230,97 +230,72 @@ class _FeatureSection extends StatelessWidget {
         horizontal: HomeScreen._horizontalPadding,
       ),
       child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         margin: EdgeInsets.zero,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
-            gradient: LinearGradient(
-              colors: [
-                AppColors.primaryLightest.withAlpha(50),
-                AppColors.secondaryLightest.withAlpha(50),
-              ],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(left: 16, bottom: 8),
-                  child: Text(
-                    'quickAccess'.tr(),
-                    style: theme.textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: theme.colorScheme.primary,
-                    ),
-                  ),
-                ),
-                LayoutBuilder(
-                  builder: (context, constraints) {
-                    final availableWidth =
-                        constraints.maxWidth -
-                        (HomeScreen._horizontalPadding * 2);
-                    final needsScrolling = features.length > 4;
-                    if (!needsScrolling) {
-                      final totalSpacing =
-                          HomeScreen._tileSpacing * (features.length - 1);
-                      final dynamicItemWidth =
-                          (availableWidth - totalSpacing) / features.length;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: HomeScreen._horizontalPadding,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children:
-                              features
-                                  .map(
-                                    (f) => SizedBox(
-                                      width: dynamicItemWidth,
-                                      height: HomeScreen._tileWidth + 16,
-                                      child: FeatureTile(
-                                        icon: f.icon,
-                                        label: f.label,
-                                        onTap: () => onFeatureTap(f.route),
-                                      ),
-                                    ),
-                                  )
-                                  .toList(),
-                        ),
-                      );
-                    } else {
-                      return SizedBox(
-                        height: HomeScreen._tileWidth + 16,
-                        child: ListView.separated(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: HomeScreen._horizontalPadding,
-                          ),
-                          scrollDirection: Axis.horizontal,
-                          itemCount: features.length,
-                          separatorBuilder:
-                              (_, __) => const SizedBox(
-                                width: HomeScreen._tileSpacing,
-                              ),
-                          itemBuilder: (context, index) {
-                            final f = features[index];
-                            return FeatureTile(
+        color: theme.cardColor,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'quickAccess'.tr(),
+                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final needsScrolling = features.length > 4;
+                  final totalSpacing = HomeScreen._tileSpacing * (features.length - 1);
+                  final availableWidth = constraints.maxWidth;
+                  final rowHeight = HomeScreen._tileWidth + 8;
+
+                  if (!needsScrolling) {
+                    final itemWidth = (availableWidth - totalSpacing) / features.length;
+                    return SizedBox(
+                      height: rowHeight,
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: features.map((f) {
+                          return SizedBox(
+                            width: itemWidth,
+                            height: HomeScreen._tileWidth,
+                            child: FeatureTile(
                               icon: f.icon,
                               label: f.label,
                               onTap: () => onFeatureTap(f.route),
-                            );
-                          },
-                        ),
-                      );
-                    }
-                  },
-                ),
-              ],
-            ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    );
+                  } else {
+                    return SizedBox(
+                      height: rowHeight,
+                      child: ListView.separated(
+                        padding: EdgeInsets.zero,
+                        scrollDirection: Axis.horizontal,
+                        itemCount: features.length,
+                        separatorBuilder: (_, __) => const SizedBox(width: HomeScreen._tileSpacing),
+                        itemBuilder: (context, index) {
+                          final f = features[index];
+                          return SizedBox(
+                            width: HomeScreen._tileWidth,
+                            height: HomeScreen._tileWidth,
+                            child: FeatureTile(
+                              icon: f.icon,
+                              label: f.label,
+                              onTap: () => onFeatureTap(f.route),
+                            ),
+                          );
+                        },
+                      ),
+                    );
+                  }
+                },
+              ),
+            ],
           ),
         ),
       ),

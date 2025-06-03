@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:busmapcantho/domain/usecases/auth/change_password_usecase.dart';
 import 'package:busmapcantho/domain/usecases/auth/get_current_user_usecase.dart';
+import 'package:busmapcantho/domain/usecases/auth/get_user_profile_usecase.dart';
 import 'package:busmapcantho/domain/usecases/auth/sign_out_usecase.dart';
 import 'package:busmapcantho/domain/usecases/auth/update_display_name_usecase.dart';
 import 'package:equatable/equatable.dart';
@@ -17,6 +18,7 @@ part 'account_state.dart';
 @injectable
 class AccountCubit extends Cubit<AccountState> {
   final GetCurrentUserUseCase getCurrentUserUseCase;
+  final GetUserProfileUseCase getUserProfileUseCase;
   final UpdateDisplayNameUseCase updateDisplayNameUseCase;
   final UpdateProfileImageUseCase updateProfileImageUseCase;
   final ChangePasswordUseCase changePasswordUseCase;
@@ -24,6 +26,7 @@ class AccountCubit extends Cubit<AccountState> {
 
   AccountCubit({
     required this.getCurrentUserUseCase,
+    required this.getUserProfileUseCase,
     required this.updateDisplayNameUseCase,
     required this.updateProfileImageUseCase,
     required this.changePasswordUseCase,
@@ -38,7 +41,10 @@ class AccountCubit extends Cubit<AccountState> {
         emit(AccountError('No user is logged in.'));
         return;
       }
-      emit(AccountLoaded(user));
+
+      final userProfile = await getUserProfileUseCase();
+
+      emit(AccountLoaded(user, userProfile));
     } catch (e) {
       emit(AccountError('Failed to fetch user info.'));
     }
@@ -48,7 +54,16 @@ class AccountCubit extends Cubit<AccountState> {
     emit(AccountLoading());
     try {
       final user = await updateDisplayNameUseCase(fullName);
-      emit(AccountUpdateSuccess('Display name updated successfully!', user));
+
+      final userProfile = await getUserProfileUseCase();
+
+      emit(
+        AccountUpdateSuccess(
+          'Display name updated successfully!',
+          user,
+          userProfile,
+        ),
+      );
     } catch (e) {
       emit(AccountError('Failed to update display name.'));
     }
@@ -58,7 +73,12 @@ class AccountCubit extends Cubit<AccountState> {
     emit(AccountLoading());
     try {
       final user = await updateProfileImageUseCase(imageFile);
-      emit(AccountUpdateSuccess('Avatar updated successfully!', user));
+
+      final userProfile = await getUserProfileUseCase();
+
+      emit(
+        AccountUpdateSuccess('Avatar updated successfully!', user, userProfile),
+      );
     } catch (e) {
       emit(AccountError('Failed to update avatar.'));
     }
@@ -76,7 +96,14 @@ class AccountCubit extends Cubit<AccountState> {
       );
       final user = await getCurrentUserUseCase();
       if (user != null) {
-        emit(AccountUpdateSuccess('Password changed successfully!', user));
+        final userProfile = await getUserProfileUseCase();
+        emit(
+          AccountUpdateSuccess(
+            'Password changed successfully!',
+            user,
+            userProfile,
+          ),
+        );
       } else {
         emit(AccountError('User not found after password change.'));
       }
@@ -86,20 +113,35 @@ class AccountCubit extends Cubit<AccountState> {
   }
 
   Future<void> toggleNotifications(bool enabled) async {
+    // Store the previous state to restore it after toggling
+    final previousState = state;
+
     emit(AccountLoading());
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('notifications_enabled', enabled);
-      final currentState = state;
-      if (currentState is AccountLoaded) {
+
+      final message =
+          enabled ? 'Notifications enabled.' : 'Notifications disabled.';
+
+      if (previousState is AccountLoaded) {
         emit(
           AccountUpdateSuccess(
-            enabled ? 'Notifications enabled.' : 'Notifications disabled.',
-            currentState.user,
+            message,
+            previousState.user,
+            previousState.userProfile,
+          ),
+        );
+      } else if (previousState is AccountUpdateSuccess) {
+        emit(
+          AccountUpdateSuccess(
+            message,
+            previousState.user,
+            previousState.userProfile,
           ),
         );
       } else {
-        emit(AccountError('No user loaded.'));
+        emit(previousState);
       }
     } catch (e) {
       emit(AccountError('Failed to update notification preferences.'));

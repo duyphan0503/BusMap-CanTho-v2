@@ -4,14 +4,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart' as osm;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:easy_localization/easy_localization.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../data/model/bus_route.dart';
 import '../../../data/model/bus_stop.dart';
+import '../../../core/services/notification_local_service.dart'; // Import dịch vụ thông báo
 import '../../cubits/bus_location/bus_location_cubit.dart';
 import '../../cubits/bus_routes/routes_cubit.dart';
 import '../../widgets/bus_map_widget.dart';
 import '../../widgets/review_section.dart';
+import '../../widgets/marquee_text.dart';
 
 class RouteDetailMapScreen extends StatefulWidget {
   final BusRoute route;
@@ -33,6 +36,7 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
   bool _isOutbound = true;
   int _selectedTabIndex = 1;
   bool _expanded = true;
+  bool _isTripModeActive = false;
 
   List<BusStop> _stops = [];
   BusStop? _selectedStop;
@@ -100,7 +104,6 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
       _selectedStop = _stops.isNotEmpty ? _stops.first : null;
     });
 
-    // Animate to the first stop in new direction
     if (_stops.isNotEmpty) {
       _animateToStop(_stops.first);
     }
@@ -108,7 +111,9 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
 
   void _animateToStop(BusStop stop) {
     setState(() => _selectedStop = stop);
-    _mapController.animateToStop?.call(stop);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _mapController.animateToStop?.call(stop);
+    });
   }
 
   void _onTabChanged(int index) => setState(() => _selectedTabIndex = index);
@@ -129,8 +134,8 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
       return '${stop.latitude.toStringAsFixed(4)},${stop.longitude.toStringAsFixed(4)}';
     }
     return outbound
-        ? '${label(start)} → ${label(end)}'
-        : '${label(end)} → ${label(start)}';
+        ? '${label(start)} -> ${label(end)}'
+        : '${label(end)} -> ${label(start)}';
   }
 
   Future<void> _showNotificationSettings() async {
@@ -201,20 +206,56 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
 
       final prevStatus = _busStatuses[bus.vehicleId] ?? 'away';
       String newStatus = prevStatus;
+      String notificationMessage = '';
+      String? notificationTitle;
+      String? status; // Trạng thái cho NotificationLocalService
 
-      if (_notifyApproach && prevStatus == 'away' && dist <= 500 && dist > 100) {
-        newStatus = 'approached';
-      }
-      else if (_notifyArrival && prevStatus != 'arrived' && dist <= 100) {
+      // Thiết lập các ngưỡng khoảng cách để xác định trạng thái xe buýt
+      const double approachingThreshold = 500; // Xe đang đến gần khi cách trạm 500m
+      const double arrivedThreshold = 100;    // Xe đã đến nơi khi cách trạm dưới 100m
+      const double departedThreshold = 200;   // Xe đã rời đi khi đã từng ở trạng thái arrived và cách trạm trên 200m
+
+      // Logic cải tiến để xác định trạng thái xe buýt chính xác hơn
+      if (dist <= arrivedThreshold && prevStatus != 'arrived') {
+        // Chuyển từ approaching hoặc away sang arrived
         newStatus = 'arrived';
+        if (_notifyArrival) {
+          status = 'arrived';
+          notificationTitle = 'route.busArrivedAtStopTitle'.tr();
+          notificationMessage = 'route.busArrivedAtStop'.tr(args: [bus.vehicleId, _selectedStop!.name]);
+        }
       }
-      else if (_notifyDeparture && prevStatus == 'arrived' && dist > 100) {
+      else if (prevStatus == 'arrived' && dist > departedThreshold) {
+        // Chuyển từ arrived sang departed
         newStatus = 'departed';
+        if (_notifyDeparture) {
+          status = 'departed';
+          notificationTitle = 'route.busDepartedStopTitle'.tr();
+          notificationMessage = 'route.busDepartedStop'.tr(args: [bus.vehicleId, _selectedStop!.name]);
+        }
+      }
+      else if (dist <= approachingThreshold && dist > arrivedThreshold && prevStatus == 'away') {
+        // Chuyển từ away sang approaching
+        newStatus = 'approaching';
+        if (_notifyApproach) {
+          status = 'approaching';
+          notificationTitle = 'route.busApproachingStopTitle'.tr();
+          notificationMessage = 'route.busApproachingStop'.tr(args: [bus.vehicleId, _selectedStop!.name]);
+        }
       }
 
       if (newStatus != prevStatus) {
         _busStatuses[bus.vehicleId] = newStatus;
-        // TODO: Show notification based on newStatus
+        if (_isTripModeActive && status != null && notificationMessage.isNotEmpty && mounted) {
+          // Sử dụng NotificationLocalService để hiển thị thông báo trên thanh thông báo
+          final notificationService = NotificationLocalService();
+          notificationService.showBusNotification(
+            title: notificationTitle ?? 'BusMap',
+            body: notificationMessage,
+            status: status,
+            payload: '${widget.route.id}|${_selectedStop!.id}|${bus.vehicleId}',
+          );
+        }
       }
     }
   }
@@ -270,6 +311,7 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
             onRoutes: (stop) {},
             routePoints: _stops.map((s) => osm.LatLng(s.latitude, s.longitude)).toList(),
             busLocations: busLocations,
+            routeScreenMapController: _mapController,
           ),
         ),
         _buildTopIndicator(theme),
@@ -288,16 +330,40 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
     return Positioned(
       top: 10,
       left: 10,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-        decoration: BoxDecoration(
-          color: AppColors.primaryLight.withAlpha((0.8 * 255).toInt()),
-          borderRadius: BorderRadius.circular(8),
+      child: ElevatedButton.icon(
+        icon: Icon(
+          _isTripModeActive ? Icons.pause_circle_filled : Icons.play_circle_filled,
+          color: Colors.white,
+          size: 18,
         ),
-        child: Text(
-          'Bắt đầu khởi hành',
-          style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.textOnPrimary),
+        label: Text(
+          _isTripModeActive ? 'route.stopTracking'.tr() : 'route.startTracking'.tr(),
+          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white, fontSize: 12),
         ),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _isTripModeActive ? AppColors.error : AppColors.primaryMedium,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          elevation: 2,
+        ),
+        onPressed: () {
+          setState(() {
+            _isTripModeActive = !_isTripModeActive;
+          });
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(_isTripModeActive
+                    ? 'route.tripTrackingEnabled'.tr()
+                    : 'route.tripTrackingDisabled'.tr()),
+                backgroundColor: _isTripModeActive ? AppColors.secondaryDark : AppColors.primaryDark,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+        },
       ),
     );
   }
@@ -328,17 +394,19 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
       child: Row(
         children: [
           Expanded(
-            child: Text(
-              shortRouteName(_stops, outbound: _isOutbound),
+            child: MarqueeText(
+              text: shortRouteName(_stops, outbound: _isOutbound),
               style: theme.textTheme.bodyMedium?.copyWith(
                 fontSize: 13,
                 color: AppColors.primaryDark,
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              velocity: 40.0, // Adjust speed as needed
+              pauseBetweenLoops: const Duration(seconds: 2),
+              initialDelay: const Duration(seconds: 1),
+              gapWidth: 75.0, // Adjust gap as needed
             ),
           ),
-          const Spacer(),
+          const SizedBox(width: 16),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryMedium,
@@ -347,7 +415,7 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
               elevation: 0,
             ),
             onPressed: () => _toggleDirection(!_isOutbound),
-            child: Text(_isOutbound ? 'Lượt về' : 'Lượt đi'),
+            child: Text(_isOutbound ? 'route.returnTrip'.tr() : 'route.outboundTrip'.tr()),
           ),
           const SizedBox(width: 8),
           IconButton(
@@ -383,10 +451,10 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
-                _buildTabItem(0, 'Biểu đồ', theme),
-                _buildTabItem(1, 'Trạm dừng', theme),
-                _buildTabItem(2, 'Thông tin', theme),
-                _buildTabItem(3, 'Đánh giá', theme),
+                _buildTabItem(0, 'route.scheduleTab'.tr(), theme),
+                _buildTabItem(1, 'route.stopsTab'.tr(), theme),
+                _buildTabItem(2, 'route.infoTab'.tr(), theme),
+                _buildTabItem(3, 'route.reviewsTab'.tr(), theme),
               ],
             ),
           ),
@@ -442,14 +510,22 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
   }
 
   Widget _buildScheduleTab(ThemeData theme) {
+    final route = widget.route;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Operating Hours', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        Text('route.operatingHoursTitle'.tr(), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
         const SizedBox(height: 8),
-        _buildTimeRow('Weekdays', '06:00 - 20:00', theme),
-        _buildTimeRow('Weekends', '07:00 - 19:00', theme),
-        _buildTimeRow('Frequency', 'Every 15-20 minutes', theme),
+        if (route.operatingHoursDescription != null && route.operatingHoursDescription!.isNotEmpty)
+          _buildTimeRow('route.timeRange'.tr(), route.operatingHoursDescription!, theme),
+        if (route.frequencyDescription != null && route.frequencyDescription!.isNotEmpty)
+          _buildTimeRow('route.frequency'.tr(), route.frequencyDescription!, theme),
+        if (route.fareInfo != null && route.fareInfo!.isNotEmpty)
+          _buildTimeRow('route.fare'.tr(), route.fareInfo!, theme),
+        if ((route.operatingHoursDescription == null || route.operatingHoursDescription!.isEmpty) &&
+            (route.frequencyDescription == null || route.frequencyDescription!.isEmpty) &&
+            (route.fareInfo == null || route.fareInfo!.isEmpty))
+          Text('route.noScheduleInfo'.tr(), style: theme.textTheme.bodyMedium),
       ],
     );
   }
@@ -528,15 +604,22 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
   }
 
   Widget _buildInfoTab(ThemeData theme) {
+    final route = widget.route;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Route Information', style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        Text('route.infoTitle'.tr(), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
-        _buildInfoRow('Route Number', widget.route.routeNumber, theme),
-        _buildInfoRow('Total Distance', 'N/A', theme),
-        _buildInfoRow('Travel Time', 'N/A', theme),
-        _buildInfoRow('Stops', '${_stops.length} stops', theme),
+        _buildInfoRow('route.number'.tr(), route.routeNumber, theme),
+        _buildInfoRow('route.name'.tr(), route.routeName, theme),
+        if (route.description != null && route.description!.isNotEmpty)
+          _buildInfoRow('route.description'.tr(), route.description!, theme),
+        if (route.routeType != null && route.routeType!.isNotEmpty)
+          _buildInfoRow('route.type'.tr(), route.routeType!, theme),
+        if (route.agencyId != null && route.agencyId!.isNotEmpty)
+          _buildInfoRow('route.agency'.tr(), route.agencyId!, theme),
+        _buildInfoRow('route.stopsCount'.tr(), '${_stops.length}', theme),
+        _buildInfoRow('route.updatedAt'.tr(), route.updatedAt.toString().split(' ').first, theme),
       ],
     );
   }
@@ -563,7 +646,7 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
 
   Widget _buildNotificationButton() {
     return Positioned(
-      bottom: 80,
+      top: 80, // Changed from bottom: 80
       right: 16,
       child: FloatingActionButton(
         heroTag: 'notif_settings',
@@ -613,19 +696,19 @@ class NotificationSettingsDialog extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         children: [
           SwitchListTile(
-            title: const Text('Notify when approaching'),
+            title: Text('notification.notifyApproaching'.tr()),
             value: notifyApproach,
             activeColor: AppColors.primaryMedium,
             onChanged: onApproachChanged,
           ),
           SwitchListTile(
-            title: const Text('Notify on arrival'),
+            title: Text('notification.notifyArrival'.tr()),
             value: notifyArrival,
             activeColor: AppColors.primaryMedium,
             onChanged: onArrivalChanged,
           ),
           SwitchListTile(
-            title: const Text('Notify on departure'),
+            title: Text('notification.notifyDeparture'.tr()),
             value: notifyDeparture,
             activeColor: AppColors.primaryMedium,
             onChanged: onDepartureChanged,
@@ -638,7 +721,7 @@ class NotificationSettingsDialog extends StatelessWidget {
               elevation: 0,
             ),
             onPressed: onDone,
-            child: const Text('Done'),
+            child: Text('common.done'.tr()),
           ),
         ],
       ),

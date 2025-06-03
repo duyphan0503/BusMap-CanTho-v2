@@ -67,8 +67,8 @@ class _InwardGradientPainter extends CustomPainter {
       Alignment.bottomCenter,
       outer,
       [
-        borderColor.withAlpha(217), // 0.85 * 255
-        borderColor.withAlpha(102), // 0.4 * 255
+        borderColor.withAlpha(180),
+        borderColor.withAlpha(80),
         borderColor.withAlpha(0),
       ],
       [0.0, 0.7, 1.0],
@@ -83,8 +83,8 @@ class _InwardGradientPainter extends CustomPainter {
       Alignment.topCenter,
       outer,
       [
-        borderColor.withAlpha(217),
-        borderColor.withAlpha(102),
+        borderColor.withAlpha(180),
+        borderColor.withAlpha(80),
         borderColor.withAlpha(0),
       ],
       [0.0, 0.7, 1.0],
@@ -99,8 +99,8 @@ class _InwardGradientPainter extends CustomPainter {
       Alignment.centerRight,
       outer,
       [
-        borderColor.withAlpha(217),
-        borderColor.withAlpha(102),
+        borderColor.withAlpha(180),
+        borderColor.withAlpha(80),
         borderColor.withAlpha(0),
       ],
       [0.0, 0.7, 1.0],
@@ -115,8 +115,8 @@ class _InwardGradientPainter extends CustomPainter {
       Alignment.centerLeft,
       outer,
       [
-        borderColor.withAlpha(217),
-        borderColor.withAlpha(102),
+        borderColor.withAlpha(180),
+        borderColor.withAlpha(80),
         borderColor.withAlpha(0),
       ],
       [0.0, 0.7, 1.0],

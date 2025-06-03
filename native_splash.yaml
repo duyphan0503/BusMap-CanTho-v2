@@ -3,7 +3,7 @@ flutter_native_splash:
   ios: true
   web: false
 
-  color: "#09D1C7"
+  color: "#FFFFFF"
   image: "assets/images/logo_1024.png"
   branding: "assets/images/branding.png"
   branding_mode: bottom
@@ -12,4 +12,4 @@ flutter_native_splash:
   android_12:
     image: "assets/images/logo_1024.png"
     branding: "assets/images/branding.png"
-    icon_background_color: "#09D1C7"
+    icon_background_color: "#FFFFFF"

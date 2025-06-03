@@ -52,6 +52,9 @@ class AuthRepositoryImpl implements AuthRepository {
   );
 
   @override
+  Future<Map<String, dynamic>?> getUserProfile() => _remote.getUserProfile();
+
+  @override
   Future<User> updateDisplayName(String fullName) =>
       _remote.updateDisplayName(fullName);
 

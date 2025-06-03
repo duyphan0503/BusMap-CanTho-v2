@@ -17,6 +17,8 @@ abstract class AuthRepository {
 
   Future<User?> getCurrentUser();
 
+  Future<Map<String, dynamic>?> getUserProfile();
+
   Future<User> updateDisplayName(String fullName);
 
   Future<User> updateProfileImage(File file);

@@ -14,6 +14,7 @@ import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as osm;
 
 import '../routes/app_routes.dart';
+import '../screens/bus_routes/route_detail_map_screen.dart';
 
 typedef StopCallback = void Function(BusStop stop);
 typedef VoidCallback = void Function();
@@ -42,6 +43,8 @@ class BusMapWidget extends StatefulWidget {
   final void Function(LatLngBounds)? onMapMoved;
   final void Function(osm.LatLng center, bool hasGesture)?
   onPickerMapMoved; // New callback
+  final BusMapController? routeScreenMapController; // Added
+  final BusStop? animateToStop; // Thêm thuộc tính này
 
   const BusMapWidget({
     super.key,
@@ -66,6 +69,8 @@ class BusMapWidget extends StatefulWidget {
     this.highlightedStep,
     this.onMapMoved,
     this.onPickerMapMoved, // Add to constructor
+    this.routeScreenMapController, // Added
+    this.animateToStop,
   });
 
   @override
@@ -99,6 +104,7 @@ class _BusMapWidgetState extends State<BusMapWidget>
       duration: const Duration(milliseconds: 300),
     );
     _mapEventSub = _mapCtrl.mapController.mapEventStream.listen(_onMapEvent);
+    _updateRouteScreenMapController(); // Added
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final bounds = _mapCtrl.mapController.camera.visibleBounds;
@@ -118,7 +124,6 @@ class _BusMapWidgetState extends State<BusMapWidget>
     if (evt is MapEventMoveEnd && widget.onMapMoved != null) {
       final bounds = _mapCtrl.mapController.camera.visibleBounds;
       widget.onMapMoved!(bounds);
-      debugPrint('Map moved to bounds: $bounds');
     }
   }
 
@@ -126,9 +131,23 @@ class _BusMapWidgetState extends State<BusMapWidget>
   void didUpdateWidget(BusMapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
 
+    if (widget.routeScreenMapController != oldWidget.routeScreenMapController) {
+      _updateRouteScreenMapController(); // Added
+    }
+
     if (widget.highlightedStep != null &&
         widget.highlightedStep != oldWidget.highlightedStep) {
       _zoomToStep(widget.highlightedStep!);
+    }
+
+    // Khi nhận animateToStop mới, animate đến vị trí stop đó
+    if (widget.animateToStop != null &&
+        (oldWidget.animateToStop == null ||
+         widget.animateToStop!.id != oldWidget.animateToStop?.id)) {
+      _mapCtrl.animateTo(
+        dest: osm.LatLng(widget.animateToStop!.latitude, widget.animateToStop!.longitude),
+        zoom: _mapCtrl.mapController.camera.zoom < 16.0 ? 16.0 : _mapCtrl.mapController.camera.zoom,
+      );
     }
   }
 
@@ -144,6 +163,21 @@ class _BusMapWidgetState extends State<BusMapWidget>
     _mapEventSub.cancel();
     _mapCtrl.dispose();
     super.dispose();
+  }
+
+  void _updateRouteScreenMapController() { // Added method
+    if (widget.routeScreenMapController != null) {
+      widget.routeScreenMapController!.animateToStop = (BusStop stop) {
+        if (mounted) {
+          _mapCtrl.animateTo(
+            dest: osm.LatLng(stop.latitude, stop.longitude),
+            zoom: _mapCtrl.mapController.camera.zoom < 15.0
+                ? 15.0
+                : _mapCtrl.mapController.camera.zoom,
+          );
+        }
+      };
+    }
   }
 
   @override
@@ -167,7 +201,9 @@ class _BusMapWidgetState extends State<BusMapWidget>
                 osm.LatLng(10.2, 105.9),
               ),
             ),
-            onTap: (_, __) => widget.onClearSelectedStop(),
+            onTap: (_, __) {
+              widget.onClearSelectedStop();
+            },
             keepAlive: true,
             onMapEvent: (event) {
               _onMapEvent(event);
@@ -190,21 +226,11 @@ class _BusMapWidgetState extends State<BusMapWidget>
                 'attribution': '© OpenStreetMap contributors',
               },
             ),
-            CurrentLocationLayer(),
-            if (_showMarkers)
-              BusStopMarkerLayer(
-                busStops: widget.busStops,
-                selectedStop: widget.selectedStop,
-                onStopSelected: (stop) {
-                  widget.onStopSelected(stop);
-                  _mapCtrl.animateTo(
-                    dest: osm.LatLng(stop.latitude, stop.longitude),
-                    zoom: _currentZoom < 15 ? 15 : _currentZoom,
-                  );
-                },
+            if (widget.routePoints.isNotEmpty)
+              RoutePolylineLayer(
+                routePoints: widget.routePoints,
+                transportMode: widget.transportMode,
               ),
-            if (widget.busLocations != null)
-              BusLocationMarkerLayer(busLocations: widget.busLocations!),
 
             // Add markers for start and end locations
             if (widget.startLocation != null || widget.endLocation != null)
@@ -234,12 +260,6 @@ class _BusMapWidgetState extends State<BusMapWidget>
                     ),
                 ],
               ),
-
-            if (widget.routePoints.isNotEmpty)
-              RoutePolylineLayer(
-                routePoints: widget.routePoints,
-                transportMode: widget.transportMode,
-              ),
             if (widget.highlightedStep != null &&
                 widget.highlightedStep!['location'] != null)
               MarkerLayer(
@@ -264,6 +284,21 @@ class _BusMapWidgetState extends State<BusMapWidget>
                   ),
                 ],
               ),
+            if (_showMarkers)
+              BusStopMarkerLayer(
+                busStops: widget.busStops,
+                selectedStop: widget.selectedStop,
+                onStopSelected: (stop) {
+                  widget.onStopSelected(stop);
+                  _mapCtrl.animateTo(
+                    dest: osm.LatLng(stop.latitude, stop.longitude),
+                    zoom: _currentZoom < 15 ? 15 : _currentZoom,
+                  );
+                },
+              ),
+            if (widget.busLocations != null)
+              BusLocationMarkerLayer(busLocations: widget.busLocations!),
+            CurrentLocationLayer(),
           ],
         ),
         MapControls(
@@ -278,6 +313,25 @@ class _BusMapWidgetState extends State<BusMapWidget>
             widget.onCenterUser();
           },
         ),
+        if (_currentZoom < _markerVisibilityZoomThreshold)
+          Positioned(
+            top: 100,
+            left: 0,
+            right: 0,
+            child: Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withAlpha(50),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  'zoomInToSeeStops'.tr(),
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                ),
+              ),
+            ),
+          ),
         if (widget.selectedStop != null &&
             GoRouterState.of(context).matchedLocation != AppRoutes.directions &&
             ModalRoute.of(context)?.settings.name != '/route-detail/:routeId')
@@ -452,14 +506,14 @@ class MapControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Stack(
       children: [
-        // Show either regular zoom controls or step navigation controls
         if (showStepNavigation)
         Positioned(
           bottom: 16,
           right: 16,
-          child: _buildStepNavigationControls(),
+          child: _buildStepNavigationControls(theme),
         ),
         Positioned(
           top: 16,
@@ -469,6 +523,8 @@ class MapControls extends StatelessWidget {
               FloatingActionButton(
                 heroTag: 'reload_stops',
                 mini: true,
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
                 onPressed: onRefresh,
                 tooltip: 'reload'.tr(),
                 child: const Icon(Icons.refresh),
@@ -477,6 +533,8 @@ class MapControls extends StatelessWidget {
               FloatingActionButton(
                 heroTag: 'my_location',
                 mini: true,
+                backgroundColor: theme.colorScheme.primary,
+                foregroundColor: theme.colorScheme.onPrimary,
                 onPressed: onCenterUser,
                 tooltip: 'myLocation'.tr(),
                 child: const Icon(Icons.my_location),
@@ -488,7 +546,7 @@ class MapControls extends StatelessWidget {
     );
   }
 
-  Widget _buildZoomControls() {
+  /*Widget _buildZoomControls() {
     return Column(
       children: [
         FloatingActionButton(
@@ -506,24 +564,30 @@ class MapControls extends StatelessWidget {
         ),
       ],
     );
-  }
+  }*/
 
-  Widget _buildStepNavigationControls() {
+  Widget _buildStepNavigationControls(ThemeData theme) {
     return Row(
       children: [
         FloatingActionButton(
           heroTag: 'prev_step',
           mini: true,
+          backgroundColor: onPrevStep == null
+              ? theme.disabledColor
+              : theme.colorScheme.primary,
+          foregroundColor: theme.colorScheme.onPrimary,
           onPressed: onPrevStep,
-          backgroundColor: onPrevStep == null ? Colors.grey[300] : null,
           child: const Icon(Icons.arrow_back),
         ),
         const SizedBox(width: 8),
         FloatingActionButton(
           heroTag: 'next_step',
           mini: true,
+          backgroundColor: onNextStep == null
+              ? theme.disabledColor
+              : theme.colorScheme.primary,
+          foregroundColor: theme.colorScheme.onPrimary,
           onPressed: onNextStep,
-          backgroundColor: onNextStep == null ? Colors.grey[300] : null,
           child: const Icon(Icons.arrow_forward),
         ),
       ],
@@ -553,6 +617,7 @@ class StopInfoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return Positioned(
       bottom: 16,
       left: 16,
@@ -572,16 +637,14 @@ class StopInfoCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       stop.name,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                     ),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
                     onPressed: onClose,
                     tooltip: 'close'.tr(),
+                    color: theme.colorScheme.primary,
                   ),
                 ],
               ),
@@ -589,15 +652,34 @@ class StopInfoCard extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.directions, size: 18),
-                    label: Text('getDirections'.tr()),
-                    onPressed: onDirections,
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.directions, size: 18),
+                      label: Text('getDirections'.tr(), overflow: TextOverflow.ellipsis),
+                      onPressed: onDirections,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.primary,
+                        foregroundColor: theme.colorScheme.onPrimary,
+                        textStyle: theme.textTheme.labelLarge,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
                   ),
-                  ElevatedButton.icon(
-                    icon: const Icon(Icons.list, size: 18),
-                    label: Text('routes'.tr()),
-                    onPressed: () => onRoutes(stop),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.list, size: 18),
+                      label: Text('routes'.tr(), overflow: TextOverflow.ellipsis),
+                      onPressed: () => onRoutes(stop),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: theme.colorScheme.secondary,
+                        foregroundColor: theme.colorScheme.onSecondary,
+                        textStyle: theme.textTheme.labelLarge,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -611,15 +693,19 @@ class StopInfoCard extends StatelessWidget {
                     children: [
                       Text(
                         distanceLabel!,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       Text(
                         durationLabel!,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
                       ),
                       TextButton(
                         onPressed: onClose,
-                        child: const Text('Clear'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: theme.colorScheme.error,
+                          textStyle: theme.textTheme.labelLarge,
+                        ),
+                        child: Text('close'.tr()),
                       ),
                     ],
                   ),
@@ -631,3 +717,4 @@ class StopInfoCard extends StatelessWidget {
     );
   }
 }
+

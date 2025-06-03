@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:busmapcantho/configs/env.dart';
@@ -12,15 +13,12 @@ class AuthRemoteDatasource {
   AuthRemoteDatasource([SupabaseClient? client])
     : _client = client ?? Supabase.instance.client;
 
-  /// Gọi hàm này ở main() hoặc khi khởi tạo app để đảm bảo đồng bộ users
   void initAuthListener() {
-    _client.auth.onAuthStateChange.listen((data) async {
+    late final StreamSubscription<AuthState> sub;
+    sub = _client.auth.onAuthStateChange.listen((data) async {
       final event = data.event;
-      final session = data.session;
-      final user = session?.user;
-      if (user != null &&
-          (event == AuthChangeEvent.signedIn ||
-              event == AuthChangeEvent.userUpdated)) {
+      final user = data.session?.user;
+      if (user != null && (event == AuthChangeEvent.signedIn)) {
         final fullName = user.userMetadata?['full_name'] as String? ?? '';
         final avatarUrl = user.userMetadata?['avatar_url'] as String? ?? '';
         await _client.from('users').upsert({
@@ -29,6 +27,7 @@ class AuthRemoteDatasource {
           'full_name': fullName,
           'avatar_url': avatarUrl,
         }, onConflict: 'id');
+        sub.cancel();
       }
     });
   }
@@ -106,19 +105,31 @@ class AuthRemoteDatasource {
     return _client.auth.currentUser;
   }
 
+  Future<Map<String, dynamic>?> getUserProfile() async {
+    final user = _client.auth.currentUser;
+    if (user == null) throw Exception('No user is currently signed in');
+
+    final response = await _client
+        .from('users')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+    return response as Map<String, dynamic>?;
+  }
+
   Future<User> updateDisplayName(String fullName) async {
     final user = _client.auth.currentUser;
     if (user == null) throw Exception('No user is currently signed in');
 
-    final response = await _client.auth.updateUser(
-      UserAttributes(data: {'full_name': fullName, ...user.userMetadata ?? {}}),
-    );
+    // Chỉ cập nhật bảng users, không cập nhật auth metadata
+    await _client.from('users').upsert({
+      'id': user.id,
+      'full_name': fullName,
+    }, onConflict: 'id');
 
-    final updatedUser = response.user;
-    if (updatedUser == null) {
-      throw Exception('Failed to update profile image - no user returned');
-    }
-    return updatedUser;
+    // Trả về user hiện tại (không cần refresh vì auth metadata không thay đổi)
+    return user;
   }
 
   Future<User> updateProfileImage(File file) async {
@@ -137,7 +148,11 @@ class AuthRemoteDatasource {
           fileOptions: FileOptions(upsert: true),
         );
 
-    final url = _client.storage.from('avatars').getPublicUrl(storagePath);
+    final url = await _client.storage
+        .from('avatars')
+        .createSignedUrl(storagePath, 60 * 60);
+
+    /*final url = _client.storage.from('avatars').getPublicUrl(storagePath);*/
 
     final response = await _client.auth.updateUser(
       UserAttributes(data: {'avatar_url': url, ...user.userMetadata ?? {}}),

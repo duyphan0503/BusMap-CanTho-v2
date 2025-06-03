@@ -13,6 +13,7 @@ import '../../../core/di/injection.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../cubits/route_finder/route_finder_cubit.dart';
 import '../../cubits/route_finder/route_finder_state.dart';
+import '../../widgets/common/custom_app_bar.dart';
 
 class PickLocationScreen extends StatefulWidget {
   const PickLocationScreen({super.key});
@@ -87,7 +88,10 @@ class _PickLocationScreenState extends State<PickLocationScreen> {
   }
 
   void _confirmSelection() {
-    if (_currentMapCenter == null) return;
+    if (_currentMapCenter == null) {
+      Navigator.of(context).pop(false); // Return false if no selection made
+      return;
+    }
 
     final selectionType = _routeFinderCubit.state.selectionType;
     final latLng = latlong.LatLng(
@@ -101,17 +105,15 @@ class _PickLocationScreenState extends State<PickLocationScreen> {
       _routeFinderCubit.setEnd(name: _centerAddress, latLng: latLng);
     }
     _routeFinderCubit.resetSelection();
-    context.go(AppRoutes.routeFinder);
+    Navigator.of(context).pop(true); // Return true to indicate successful selection
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text('pickLocationOnMapTitle'.tr()),
-        backgroundColor: theme.colorScheme.primary,
-        foregroundColor: theme.colorScheme.onPrimary,
+      appBar: CustomAppBar(
+        title: 'pickLocationOnMapTitle'.tr(),
       ),
       body: Stack(
         children: [

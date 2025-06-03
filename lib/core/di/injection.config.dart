@@ -67,6 +67,8 @@ import 'package:busmapcantho/domain/usecases/auth/change_password_usecase.dart'
     as _i666;
 import 'package:busmapcantho/domain/usecases/auth/get_current_user_usecase.dart'
     as _i264;
+import 'package:busmapcantho/domain/usecases/auth/get_user_profile_usecase.dart'
+    as _i909;
 import 'package:busmapcantho/domain/usecases/auth/google_sign_in_native_usecase.dart'
     as _i686;
 import 'package:busmapcantho/domain/usecases/auth/request_password_reset_otp_usecase.dart'
@@ -305,14 +307,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i120.BusLocationCubit>(
       () => _i120.BusLocationCubit(gh<_i290.BusRealtimeService>()),
     );
-    gh.factory<_i840.StopCubit>(
-      () => _i840.StopCubit(gh<_i753.GetNearbyBusStopsUseCase>()),
-    );
     gh.factory<_i788.DeleteNotificationUseCase>(
       () => _i788.DeleteNotificationUseCase(gh<_i287.NotificationRepository>()),
     );
     gh.lazySingleton<_i988.TicketRepository>(
       () => _i988.TicketRepository(gh<_i366.TicketRemoteDatasource>()),
+    );
+    gh.factory<_i840.StopCubit>(
+      () => _i840.StopCubit(
+        gh<_i753.GetNearbyBusStopsUseCase>(),
+        gh<_i950.GetAllBusStopsUseCase>(),
+      ),
     );
     gh.factory<_i111.SearchBusRoutesUseCase>(
       () => _i111.SearchBusRoutesUseCase(gh<_i705.BusRouteRepository>()),
@@ -334,6 +339,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.factory<_i422.GetBusRouteByIdUseCase>(
       () => _i422.GetBusRouteByIdUseCase(gh<_i705.BusRouteRepository>()),
+    );
+    gh.factory<_i909.GetUserProfileUseCase>(
+      () => _i909.GetUserProfileUseCase(gh<_i556.AuthRepository>()),
     );
     gh.factory<_i166.FavoritesCubit>(
       () => _i166.FavoritesCubit(
@@ -426,15 +434,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i415.OtpCubit>(
       () => _i415.OtpCubit(gh<_i725.VerifyEmailOtpUseCase>()),
     );
-    gh.factory<_i601.AccountCubit>(
-      () => _i601.AccountCubit(
-        getCurrentUserUseCase: gh<_i264.GetCurrentUserUseCase>(),
-        updateDisplayNameUseCase: gh<_i346.UpdateDisplayNameUseCase>(),
-        updateProfileImageUseCase: gh<_i1067.UpdateProfileImageUseCase>(),
-        changePasswordUseCase: gh<_i666.ChangePasswordUseCase>(),
-        signOutUseCase: gh<_i284.SignOutUseCase>(),
-      ),
-    );
     gh.factory<_i129.NotificationCubit>(
       () => _i129.NotificationCubit(
         gh<_i171.MonitorStopUseCase>(),
@@ -448,6 +447,16 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i32.GetRoutesForStopUseCase>(),
         gh<_i422.GetBusRouteByIdUseCase>(),
         gh<_i290.BusRealtimeService>(),
+      ),
+    );
+    gh.factory<_i601.AccountCubit>(
+      () => _i601.AccountCubit(
+        getCurrentUserUseCase: gh<_i264.GetCurrentUserUseCase>(),
+        getUserProfileUseCase: gh<_i909.GetUserProfileUseCase>(),
+        updateDisplayNameUseCase: gh<_i346.UpdateDisplayNameUseCase>(),
+        updateProfileImageUseCase: gh<_i1067.UpdateProfileImageUseCase>(),
+        changePasswordUseCase: gh<_i666.ChangePasswordUseCase>(),
+        signOutUseCase: gh<_i284.SignOutUseCase>(),
       ),
     );
     gh.factory<_i839.FeedbackCubit>(

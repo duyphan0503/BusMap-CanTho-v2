@@ -65,7 +65,10 @@ class AppRouter {
       ),
       GoRoute(
         path: AppRoutes.map,
-        builder: (context, state) => const MapScreen(showBackButton: true),
+        builder: (context, state) {
+          final String? stopId = state.extra as String?;
+          return MapScreen(showBackButton: true, selectedStopId: stopId);
+        },
       ),
       GoRoute(
         path: AppRoutes.directions,

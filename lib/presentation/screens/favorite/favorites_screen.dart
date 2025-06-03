@@ -3,8 +3,10 @@ import 'package:busmapcantho/presentation/cubits/favorites/favorites_cubit.dart'
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/theme/app_colors.dart';
+import '../../routes/app_routes.dart';
 import '../../widgets/favorite_card_widget.dart';
 
 class FavoritesScreen extends StatefulWidget {
@@ -73,7 +75,7 @@ class _FavoritesScreenState extends State<FavoritesScreen>
       child: DecoratedBox(
         decoration: const BoxDecoration(
           gradient: AppColors.primaryGradient,
-          borderRadius: BorderRadius.vertical(bottom: Radius.circular(24)),
+          borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
           shape: BoxShape.rectangle,
         ),
         child: AppBar(
@@ -94,7 +96,7 @@ class _FavoritesScreenState extends State<FavoritesScreen>
 
   Widget _buildTabBar() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         gradient: AppColors.primaryGradient,
@@ -145,6 +147,11 @@ class _FavoriteRoutesTab extends StatelessWidget {
                     (context, index) => FavoriteCardWidget(
                       favorite: favorites[index],
                       type: FavoriteType.route,
+                      onTap: () {
+                        // Navigate to RouteDetailMapScreen
+                        final route = context.read<FavoritesCubit>().state.favoriteRoutesDetail.firstWhere((r) => r.id == favorites[index].routeId);
+                        context.push('${AppRoutes.routeDetail}/${favorites[index].routeId}', extra: route);
+                      },
                       onDelete:
                           () => context
                               .read<FavoritesCubit>()
@@ -178,6 +185,10 @@ class _FavoriteStopsTab extends StatelessWidget {
                     (context, index) => FavoriteCardWidget(
                       favorite: stops[index],
                       type: FavoriteType.stop,
+                      onTap: () {
+                        // Navigate to MapScreen and select the stop
+                        context.push(AppRoutes.map, extra: stops[index].stopId);
+                      },
                       onDelete:
                           () => context
                               .read<FavoritesCubit>()

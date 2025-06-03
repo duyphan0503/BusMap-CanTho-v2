@@ -15,13 +15,18 @@ import 'package:busmapcantho/presentation/cubits/password/password_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/route_finder/route_finder_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/route_stops/route_stops_cubit.dart';
 import 'package:busmapcantho/presentation/routes/app_router.dart';
-import 'package:busmapcantho/presentation/routes/app_routes.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'dart:io' show Platform;
 
 import 'core/di/injection.dart';
+
+import 'core/services/notification_local_service.dart';
+
+// Khởi tạo NotificationLocalService trước khi khởi động ứng dụng
+final notificationService = NotificationLocalService();
 
 class BusMapCanThoApp extends StatefulWidget {
   const BusMapCanThoApp({super.key});
@@ -31,6 +36,39 @@ class BusMapCanThoApp extends StatefulWidget {
 }
 
 class _BusMapCanThoAppState extends State<BusMapCanThoApp> {
+  bool _notificationsInitialized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Khởi tạo thông báo trong post frame callback để có context
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _initializeNotifications();
+    });
+  }
+
+  Future<void> _initializeNotifications() async {
+    if (_notificationsInitialized) return;
+
+    // Khởi tạo service thông báo
+    await notificationService.init(context);
+
+    // Yêu cầu quyền thông báo một cách rõ ràng trên Android 13+
+    if (Platform.isAndroid) {
+      PermissionStatus status = await Permission.notification.status;
+      if (!status.isGranted) {
+        await Permission.notification.request();
+      }
+    }
+
+    // Yêu cầu quyền cho các nền tảng khác
+    await notificationService.requestPermissions();
+
+    setState(() {
+      _notificationsInitialized = true;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -51,43 +89,25 @@ class _BusMapCanThoAppState extends State<BusMapCanThoApp> {
         BlocProvider<NotificationCubit>(
           create: (_) => getIt<NotificationCubit>(),
         ),
-        BlocProvider<NotificationCubit>(create: (_) => getIt<NotificationCubit>()),
-        BlocProvider<RouteStopsCubit>(create: (_) => getIt<RouteStopsCubit>()),
-        BlocProvider<RouteFinderCubit>(create: (_) => getIt<RouteFinderCubit>()),
-      ],
-      child: BlocListener<AuthCubit, AuthState>(
-        listener: (context, state) {
-          final router = AppRouter.router;
-          if (state is AuthUnauthenticated) {
-            // Get current route from the router delegate to avoid context issues
-            final String currentRoute = router.routerDelegate.currentConfiguration.uri.toString();
-            final authRoutes = [
-              AppRoutes.signIn,
-              AppRoutes.signUp,
-              AppRoutes.forgotPassword,
-              AppRoutes.verify,
-              AppRoutes.splash
-            ];
-            if (!authRoutes.contains(currentRoute)) {
-              while (router.canPop()) {
-                router.pop();
-              }
-              router.go(AppRoutes.signIn);
-            }
-          }
-        },
-        child: MaterialApp.router(
-          title: 'appTitle'.tr(),
-          theme: AppTheme.light,
-          darkTheme: AppTheme.light,
-          themeMode: ThemeMode.system,
-          debugShowCheckedModeBanner: false,
-          localizationsDelegates: context.localizationDelegates,
-          supportedLocales: context.supportedLocales,
-          scaffoldMessengerKey: NotificationSnackBarService.scaffoldMessengerKey,
-          locale: context.locale,
-          routerConfig: AppRouter.router,
+        BlocProvider<NotificationCubit>(
+          create: (_) => getIt<NotificationCubit>(),
         ),
+        BlocProvider<RouteStopsCubit>(create: (_) => getIt<RouteStopsCubit>()),
+        BlocProvider<RouteFinderCubit>(
+          create: (_) => getIt<RouteFinderCubit>(),
+        ),
+      ],
+      child: MaterialApp.router(
+        title: 'appTitle'.tr(),
+        theme: AppTheme.light,
+        darkTheme: AppTheme.light,
+        themeMode: ThemeMode.system,
+        debugShowCheckedModeBanner: false,
+        localizationsDelegates: context.localizationDelegates,
+        supportedLocales: context.supportedLocales,
+        scaffoldMessengerKey: NotificationSnackBarService.scaffoldMessengerKey,
+        locale: context.locale,
+        routerConfig: AppRouter.router,
       ),
     );
   }

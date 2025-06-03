@@ -21,34 +21,56 @@ class DirectionStepsList extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListView.separated(
       controller: scrollController,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 0),
       physics: const ClampingScrollPhysics(),
       itemCount: steps.length + 1,
       separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder: (context, idx) =>
-          idx == 0 ? _buildSummaryItem() : _buildDirectionStep(steps[idx - 1], idx - 1),
+      itemBuilder:
+          (context, idx) =>
+              idx == 0
+                  ? _buildSummaryItem()
+                  : _buildDirectionStep(steps[idx - 1], idx - 1),
     );
   }
 
   Widget _buildSummaryItem() {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.start,
-        children: [
-          Text(
-            duration ?? '-',
-            style: const TextStyle(
-              color: Colors.green,
-              fontWeight: FontWeight.bold,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 48),
+        alignment: Alignment.topLeft,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  duration ?? '-',
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 22, // tăng cỡ chữ
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '(${distance ?? '-'})',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 20, // tăng cỡ chữ
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(width: 8),
-          Text(
-            '(${distance ?? '-'})',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ],
+            Text(
+              '(Tuyến đường ngắn nhất)',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -115,7 +137,10 @@ class DirectionStepsList extends StatelessWidget {
                 color: Colors.red,
               )
               : null,
-      onTap: onStepTap != null ? () => onStepTap!(stepIndex) : null, // Gọi callback khi tap
+      onTap:
+          onStepTap != null
+              ? () => onStepTap!(stepIndex)
+              : null, // Gọi callback khi tap
     );
   }
 

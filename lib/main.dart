@@ -22,7 +22,7 @@ void main() async {
   await getIt<AuthRepository>().initAuthListener();
 
   final prefs = await SharedPreferences.getInstance();
-  final saveLocale = prefs.getString('locale') ?? 'en';
+  final saveLocale = prefs.getString('locale') ?? 'vi';
 
   runApp(
     EasyLocalization(

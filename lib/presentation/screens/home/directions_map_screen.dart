@@ -14,6 +14,7 @@ import '../../routes/app_routes.dart';
 import '../../widgets/bus_map_widget.dart';
 import '../../widgets/directions_bottom_sheet.dart';
 import '../../widgets/route_step_preview_overlay.dart';
+import '../../widgets/common/custom_app_bar.dart';
 
 class DirectionsMapScreen extends StatefulWidget {
   final BusStop stop;
@@ -41,6 +42,8 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
   int _currentStepIndex = 0;
   Map<String, dynamic>? _currentStep;
 
+  bool _hasFetchedDirections = false;
+
   @override
   void initState() {
     super.initState();
@@ -48,8 +51,9 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
     _directionsCubit = getIt<DirectionsCubit>();
 
     _mapBloc.stream.listen((state) {
-      if (state is MapLoaded) {
+      if (state is MapLoaded && !_hasFetchedDirections) {
         _fetchDirections(state);
+        _hasFetchedDirections = true;
       }
     });
   }
@@ -130,10 +134,17 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+    final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_showStepPreview ? 'Xem trước đường đi' : 'directions'.tr()),
-        leading: BackButton(onPressed: _clearAndExit),
+      appBar: CustomAppBar(
+        title: _showStepPreview ? widget.stop.name : 'directions'.tr(),
+        leading: BackButton(
+          onPressed: _clearAndExit,
+          color: theme.appBarTheme.iconTheme?.color ?? theme.colorScheme.onPrimary,
+        ),
+        actions: [],
+        centerTitle: true,
+        elevation: 0,
       ),
       body: BlocBuilder<MapBloc, MapState>(
         bloc: _mapBloc,
@@ -157,17 +168,15 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
                   durations[mode] = result.formattedDuration;
                   distances[mode] = result.formattedDistance;
                 } else {
-                  durations[mode] = 'Loading...';
-                  distances[mode] = 'Loading...';
+                  durations[mode] = 'loading'.tr();
+                  distances[mode] = 'loading'.tr();
                 }
               }
 
-              // Extract steps from current state
               final List<Map<String, dynamic>> steps = directionsState is DirectionsLoaded
                   ? (directionsState.steps ?? []).map((step) => Map<String, dynamic>.from(step)).toList()
                   : [];
 
-              // Get the current step location for map highlighting
               Map<String, dynamic>? highlightedStep = _showStepPreview && steps.isNotEmpty && _currentStepIndex < steps.length
                   ? steps[_currentStepIndex]
                   : null;
@@ -181,7 +190,7 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
                     selectedStop: widget.stop,
                     userLocation: userLoc,
                     onStopSelected: (stop) {
-                      if (stop.id == widget.stop.id && !_showStepPreview) _clearAndExit();
+                      /*if (stop.id == widget.stop.id && !_showStepPreview) _clearAndExit();*/
                     },
                     onClearSelectedStop: () {},
                     refreshStops: () {},
@@ -238,7 +247,10 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
                             onPressed: _currentStepIndex > 0
                                 ? () => _navigateToStep(_currentStepIndex - 1, steps)
                                 : null,
-                            backgroundColor: _currentStepIndex > 0 ? null : Colors.grey[300],
+                            backgroundColor: _currentStepIndex > 0
+                                ? theme.colorScheme.primary
+                                : theme.disabledColor,
+                            foregroundColor: theme.colorScheme.onPrimary,
                             child: const Icon(Icons.arrow_back),
                           ),
                           const SizedBox(width: 8),
@@ -248,7 +260,10 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
                             onPressed: _currentStepIndex < steps.length - 1
                                 ? () => _navigateToStep(_currentStepIndex + 1, steps)
                                 : null,
-                            backgroundColor: _currentStepIndex < steps.length - 1 ? null : Colors.grey[300],
+                            backgroundColor: _currentStepIndex < steps.length - 1
+                                ? theme.colorScheme.primary
+                                : theme.disabledColor,
+                            foregroundColor: theme.colorScheme.onPrimary,
                             child: const Icon(Icons.arrow_forward),
                           ),
                         ],
@@ -269,17 +284,19 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
                   // Error message display
                   if (directionsState is DirectionsError)
                     Positioned(
-                      top: 16,
+                      top: 90,
                       left: 16,
                       right: 16,
                       child: Material(
-                        color: Colors.red.shade100,
+                        color: theme.colorScheme.error.withAlpha(50),
                         borderRadius: BorderRadius.circular(8),
                         child: Padding(
                           padding: const EdgeInsets.all(12.0),
                           child: Text(
                             directionsState.message,
-                            style: TextStyle(color: Colors.red.shade800),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.error,
+                            ),
                             textAlign: TextAlign.center,
                           ),
                         ),

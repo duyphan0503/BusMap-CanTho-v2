@@ -13,8 +13,10 @@ import '../../../core/theme/app_colors.dart';
 import '../../../gen/assets.gen.dart';
 import '../../cubits/account/account_cubit.dart';
 import '../../routes/app_routes.dart';
-import '../../widgets/language_selector_widget.dart';
 import '../../widgets/change_password_dialog.dart';
+import '../../widgets/language_selector_widget.dart';
+import 'help_support_screen.dart';
+import 'license_screen.dart';
 
 class AccountScreen extends StatefulWidget {
   const AccountScreen({super.key});
@@ -42,6 +44,7 @@ class AccountScreenState extends State<AccountScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       setState(() {
+        // Sử dụng cùng key với NotificationLocalService
         _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
       });
     } catch (e) {
@@ -200,15 +203,24 @@ class AccountScreenState extends State<AccountScreen> {
     String? email;
     String? avatarUrl;
 
-    if (state is AccountLoaded || state is AccountUpdateSuccess) {
-      final user =
-          (state is AccountLoaded)
-              ? state.user
-              : (state as AccountUpdateSuccess).user;
-      displayName = user.userMetadata?['full_name'] as String?;
+    if (state is AccountLoaded) {
+      final user = state.user;
+      // Lấy displayName từ profile thay vì metadata
+      displayName = state.userProfile?['full_name'] as String?;
       email = user.email;
       avatarUrl = user.userMetadata?['avatar_url'] as String?;
-      _nameController.text = displayName ?? '';
+      if (_nameController.text != displayName) {
+        _nameController.text = displayName ?? '';
+      }
+    } else if (state is AccountUpdateSuccess) {
+      final user = state.user;
+      // Lấy displayName từ profile thay vì metadata
+      displayName = state.userProfile?['full_name'] as String?;
+      email = user.email;
+      avatarUrl = user.userMetadata?['avatar_url'] as String?;
+      if (_nameController.text != displayName) {
+        _nameController.text = displayName ?? '';
+      }
     }
 
     return Padding(
@@ -389,7 +401,10 @@ class AccountScreenState extends State<AccountScreen> {
         _buildSupportTile(
           icon: Icons.help_outline,
           title: 'helpAndSupport'.tr(),
-          onTap: () => _navigateToHelpScreen(context),
+          onTap:
+              () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const HelpSupportScreen()),
+              ),
         ),
         _buildSupportTile(
           icon: Icons.info_outline,
@@ -422,41 +437,50 @@ class AccountScreenState extends State<AccountScreen> {
     );
   }
 
-  void _navigateToHelpScreen(BuildContext context) {
-    Navigator.of(context).push(
-      MaterialPageRoute(
-        builder:
-            (_) => Scaffold(
-              appBar: AppBar(
-                title: Text('helpAndSupport'.tr()),
-                flexibleSpace: Container(
-                  decoration: const BoxDecoration(
-                    gradient: AppColors.primaryGradient,
-                  ),
-                ),
-              ),
-              body: const _HelpSupportContent(),
-            ),
-      ),
-    );
-  }
-
   void _showAboutApp(BuildContext context) {
-    showAboutDialog(
+    showDialog(
       context: context,
-      applicationName: 'BusMap Cần Thơ',
-      applicationVersion: '1.0.0',
-      applicationIcon: Image.asset(
-        'assets/images/app_icon.png',
-        width: 48,
-        height: 48,
-      ),
-      children: [
-        Text(
-          'aboutAppDescription'.tr(),
-          style: Theme.of(context).textTheme.bodyMedium,
-        ),
-      ],
+      builder:
+          (context) => AlertDialog(
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                Image.asset(Assets.images.appLogo.path, width: 40, height: 40),
+                const SizedBox(width: 12),
+                Text('appTitle'.tr()),
+              ],
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'aboutAppContent'.tr(),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  '${'version'.tr()}: 1.0.0',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const LicenseScreen()),
+                  );
+                },
+                child: Text('viewLicense'.tr()),
+              ),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text('close'.tr()),
+              ),
+            ],
+          ),
     );
   }
 
@@ -465,64 +489,5 @@ class AccountScreenState extends State<AccountScreen> {
     _nameController.dispose();
     _passwordController.dispose();
     super.dispose();
-  }
-}
-
-class _HelpSupportContent extends StatelessWidget {
-  const _HelpSupportContent();
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Text('faqTitle'.tr(), style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 16),
-        ..._buildFAQItems(context),
-        const SizedBox(height: 24),
-        Text('contactUs'.tr(), style: Theme.of(context).textTheme.titleLarge),
-        const SizedBox(height: 16),
-        _buildContactInfo(Icons.email, 'support@busmap.com'),
-        _buildContactInfo(Icons.phone, '+84 123 456 789'),
-      ],
-    );
-  }
-
-  List<Widget> _buildFAQItems(BuildContext context) {
-    return [
-      _buildFAQItem(
-        context: context,
-        question: 'faqItem1'.tr(),
-        answer: 'faqAnswer1'.tr(),
-      ),
-      _buildFAQItem(
-        context: context,
-        question: 'faqItem2'.tr(),
-        answer: 'faqAnswer2'.tr(),
-      ),
-    ];
-  }
-
-  Widget _buildFAQItem({
-    required BuildContext context,
-    required String question,
-    required String answer,
-  }) {
-    return ExpansionTile(
-      title: Text(question),
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Text(answer, style: Theme.of(context).textTheme.bodyMedium),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildContactInfo(IconData icon, String info) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.primaryMedium),
-      title: Text(info),
-    );
   }
 }

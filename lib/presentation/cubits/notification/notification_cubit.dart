@@ -78,6 +78,8 @@ class NotificationCubit extends Cubit<NotificationState> {
               if (isTriggered) {
                 emit(NotificationTriggered('Distance threshold reached'));
                 loadNotifications(); // Reload notifications when triggered
+                _monitorSubscription?.cancel();
+                _monitorSubscription = null;
               }
             },
             onError: (error) {
@@ -109,6 +111,8 @@ class NotificationCubit extends Cubit<NotificationState> {
               if (isTriggered) {
                 emit(NotificationTriggered('Time threshold reached'));
                 loadNotifications();
+                _reportSubscription?.cancel();
+                _reportSubscription = null;
               }
             },
             onError: (error) {
