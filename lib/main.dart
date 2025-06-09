@@ -4,6 +4,7 @@ import 'package:busmapcantho/domain/repositories/auth_repository.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
+import 'package:nominatim_flutter/nominatim_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'app.dart';
@@ -23,6 +24,12 @@ void main() async {
 
   final prefs = await SharedPreferences.getInstance();
   final saveLocale = prefs.getString('locale') ?? 'vi';
+
+  NominatimFlutter.instance.configureNominatim(
+    useCacheInterceptor: true,
+    maxStale: Duration(days: 7),
+    userAgent: "busmapcantho",
+  );
 
   runApp(
     EasyLocalization(

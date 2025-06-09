@@ -49,7 +49,7 @@ class _RouteFinderView extends StatefulWidget {
 
 class _RouteFinderViewState extends State<_RouteFinderView> {
   late final RouteFinderCubit _cubit;
-  int _maxRoutes = 1; // Default max routes
+  int _maxRoutes = 1;
   bool _initialized = false;
 
   @override
@@ -65,7 +65,7 @@ class _RouteFinderViewState extends State<_RouteFinderView> {
 
   @override
   void dispose() {
-    _cubit.resetRoute();            // clear line + locations when leaving
+    _cubit.resetRoute();
     super.dispose();
   }
 
@@ -75,7 +75,10 @@ class _RouteFinderViewState extends State<_RouteFinderView> {
         final pos = await Geolocator.getCurrentPosition();
         final userLocation = LatLng(pos.latitude, pos.longitude);
         if (mounted) {
-          _cubit.setInitialLocation(userLocation, 'currentLocationPlaceholder'.tr());
+          _cubit.setInitialLocation(
+            userLocation,
+            'currentLocationPlaceholder'.tr(),
+          );
         }
       } catch (_) {
         // Handle location error if needed
@@ -344,7 +347,7 @@ class _RouteFinderViewState extends State<_RouteFinderView> {
           border: Border.all(color: theme.primaryColor, width: 1.5),
         ),
         child: GradientBorderWidget(
-          borderColor: AppColors.primaryLightest,
+          borderColor: Colors.white,
           borderWidth: 2,
           borderRadius: 8,
           gradientWidth: 26,

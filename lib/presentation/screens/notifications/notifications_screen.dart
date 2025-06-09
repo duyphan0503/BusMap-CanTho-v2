@@ -1,12 +1,11 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/services/notification_local_service.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../cubits/notification/notification_cubit.dart';
-import '../../widgets/common/custom_app_bar.dart';
+import '../../widgets/custom_app_bar.dart';
 import '../../widgets/notification_item.dart';
 
 class NotificationsScreen extends StatefulWidget {
@@ -84,8 +83,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
               child: TabBarView(
                 controller: _tabController,
                 children: [
-                  _buildServerNotifications(theme),
                   _buildLocalNotifications(theme),
+                  _buildServerNotifications(theme),
                 ],
               ),
             ),
@@ -113,39 +112,44 @@ class _NotificationsScreenState extends State<NotificationsScreen>
         indicatorSize: TabBarIndicatorSize.tab,
         labelColor: AppColors.primaryDark,
         unselectedLabelColor: Colors.white,
-        labelStyle: Theme.of(context).textTheme.titleMedium?.copyWith(
-          fontWeight: FontWeight.bold,
-        ),
+        labelStyle: Theme.of(
+          context,
+        ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
         dividerColor: Colors.transparent,
         tabs: [
-          Tab(text: 'serverNotifications'.tr()),
           Tab(text: 'localNotifications'.tr()),
+          Tab(text: 'serverNotifications'.tr()),
         ],
       ),
     );
   }
 
   Future<void> _showClearConfirmationDialog(BuildContext context) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
+
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
-          (context) => AlertDialog(
+          (dialogContext) => AlertDialog(
             title: Text('clearNotificationsTitle'.tr()),
             content: Text('clearNotificationsConfirm'.tr()),
             actions: [
               TextButton(
-                onPressed: () => Navigator.pop(context, false),
+                onPressed: () => Navigator.pop(dialogContext, false),
                 child: Text('cancel'.tr()),
               ),
               TextButton(
-                onPressed: () => Navigator.pop(context, true),
+                onPressed: () => Navigator.pop(dialogContext, true),
                 style: TextButton.styleFrom(foregroundColor: AppColors.error),
                 child: Text('clear'.tr()),
               ),
             ],
           ),
     );
-    if (confirmed == true && mounted) {
+
+    if (!mounted) return;
+
+    if (confirmed == true) {
       await NotificationLocalService().clearNotifications();
       if (_hasServerNotifications) {
         await _cubit?.clearAllNotifications();
@@ -153,14 +157,9 @@ class _NotificationsScreenState extends State<NotificationsScreen>
       setState(() {
         _localFuture = NotificationLocalService().getNotifications();
       });
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('notificationsCleared'.tr()),
-            backgroundColor: AppColors.primaryMedium,
-          ),
-        );
-      }
+      scaffoldMessenger.showSnackBar(
+        SnackBar(content: Text('notificationsCleared'.tr())),
+      );
     }
   }
 
@@ -207,17 +206,19 @@ class _NotificationsScreenState extends State<NotificationsScreen>
           padding: const EdgeInsets.symmetric(vertical: 12),
           itemCount: localList.length,
           separatorBuilder: (_, __) => const SizedBox(height: 8),
-          itemBuilder: (context, index) => NotificationItem.local(
-            localNotification: localList[index],
-            onDelete: () async {
-              // Delete the specific notification at this index
-              await _deleteLocalNotification(index);
-              // Reload notifications
-              setState(() {
-                _localFuture = NotificationLocalService().getNotifications();
-              });
-            },
-          ),
+          itemBuilder:
+              (context, index) => NotificationItem.local(
+                localNotification: localList[index],
+                onDelete: () async {
+                  // Delete the specific notification at this index
+                  await _deleteLocalNotification(index);
+                  // Reload notifications
+                  setState(() {
+                    _localFuture =
+                        NotificationLocalService().getNotifications();
+                  });
+                },
+              ),
         );
       },
     );
@@ -225,7 +226,8 @@ class _NotificationsScreenState extends State<NotificationsScreen>
 
   // Update this method to use NotificationLocalService instead of direct SharedPreferences
   Future<void> _deleteLocalNotification(int index) async {
-    final localNotifications = await NotificationLocalService().getNotifications();
+    final localNotifications =
+        await NotificationLocalService().getNotifications();
     if (localNotifications.isNotEmpty && index < localNotifications.length) {
       final notification = localNotifications[index];
       final time = notification['time'];

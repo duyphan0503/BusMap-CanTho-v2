@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:injectable/injectable.dart';
 import 'package:latlong2/latlong.dart';
@@ -10,164 +9,108 @@ import '../../configs/env.dart';
 @injectable
 class OsrmService {
   Future<DirectionsResult?> getDirections(
-      LatLng start,
-      LatLng end, {
-        String mode = 'car',
-      }) async {
+    LatLng start,
+    LatLng end, {
+    String mode = 'car',
+  }) async {
     try {
-      debugPrint(
-        '📍 OSRM request: from ${start.latitude},${start.longitude} to ${end.latitude},${end.longitude} via $mode',
-      );
-
       String profile;
-      Map<String, String> optimizationParams = {};
+      Map<String, String> params = {
+        'steps': 'true',
+        'overview': 'full',
+        'geometries': 'geojson',
+      };
 
       switch (mode) {
         case 'car':
           profile = 'driving';
-          optimizationParams = {
-            'alternatives': 'true',
-            'steps': 'true',
-            'annotations': 'true',
-            'overview': 'full',
-            'geometries': 'geojson',
-          };
           break;
         case 'walk':
           profile = 'foot';
-          optimizationParams = {
-            'steps': 'true',
-            'annotations': 'true',
-            'overview': 'full',
-            'geometries': 'geojson',
-          };
           break;
-        case 'motorbike':
+        case 'bike':
           profile = 'bike';
-          optimizationParams = {
-            'steps': 'true',
-            'annotations': 'true',
-            'overview': 'full',
-            'geometries': 'geojson',
-          };
           break;
         default:
           profile = 'driving';
-          optimizationParams = {
-            'steps': 'true',
-            'overview': 'full',
-            'geometries': 'geojson',
-          };
       }
 
-      final baseUrl =
-          '$osrmBaseUrl/$profile/'
-          '${start.longitude},${start.latitude};'
-          '${end.longitude},${end.latitude}';
-
-      String urlStr = baseUrl;
-      if (optimizationParams.isNotEmpty) {
-        urlStr += '?';
-        optimizationParams.forEach((key, value) {
-          urlStr += '$key=$value&';
-        });
-        urlStr = urlStr.substring(0, urlStr.length - 1);
-      }
-
-      final url = Uri.parse(urlStr);
-      debugPrint('🌐 OSRM URL: $url');
+      final url = Uri.parse(
+        '$osrmBaseUrl/$profile/'
+        '${start.longitude},${start.latitude};'
+        '${end.longitude},${end.latitude}'
+        '?${params.entries.map((e) => '${e.key}=${e.value}').join('&')}',
+      );
 
       final resp = await http.get(url);
-      if (resp.statusCode != 200) {
-        debugPrint('⚠️ OSRM error: ${resp.statusCode}');
-        return null;
-      }
+      if (resp.statusCode != 200) return null;
 
       final data = jsonDecode(resp.body) as Map<String, dynamic>;
-      if ((data['routes'] as List).isEmpty) {
-        debugPrint('⚠️ OSRM returned no routes');
-        return null;
-      }
+      final routes = data['routes'] as List;
+      if (routes.isEmpty) return null;
 
       final coords =
-          (data['routes'][0]['geometry']['coordinates'] as List)
+          (routes[0]['geometry']['coordinates'] as List)
               .map<LatLng>((c) => LatLng(c[1] as double, c[0] as double))
               .toList();
 
-      final leg = (data['routes'][0]['legs'] as List).first;
+      final leg = routes[0]['legs'][0];
+      double distance = leg['distance'].toDouble();
+      double duration = leg['duration'].toDouble();
 
-      double baseDistance = leg['distance'].toDouble();
-      double baseDuration = leg['duration'].toDouble();
-
-      final adjustedValues = _applyTransportAdjustments(
+      final adjusted = _applyTransportAdjustments(
         mode,
-        baseDistance,
-        baseDuration,
+        distance,
+        duration,
         coords.length,
       );
+      distance = adjusted.distance;
+      duration = adjusted.duration;
 
       final steps =
           (leg['steps'] as List?)?.map<Map<String, dynamic>>((s) {
-            final maneuverType = s['maneuver']?['type'] ?? '';
-            final maneuverModifier = s['maneuver']?['modifier'];
+            final maneuver = s['maneuver'];
+            final type = maneuver['type'] ?? '';
+            final modifier = maneuver['modifier'];
             final streetName = s['name'] ?? '';
 
-            LatLng? locationPoint;
-            if (s['maneuver']?['location'] != null) {
-              final location = s['maneuver']['location'] as List;
-              locationPoint = LatLng(location[1], location[0]);
-            }
-
-            final instructionText = _getDetailedOsrmInstructionText(
-              maneuverType,
-              maneuverModifier,
+            final instruction = _getDetailedOsrmInstructionText(
+              type,
+              modifier,
               streetName,
             );
+            final iconInfo = _getDirectionIconFromOsrm(type, modifier);
 
-            final directionIcon = _getDirectionIconFromOsrm(
-              maneuverType,
-              maneuverModifier,
-            );
-
-            double stepDistance = s['distance'].toDouble();
-            double stepDuration = s['duration'].toDouble();
-
-            if (adjustedValues.distanceRatio != 1.0 ||
-                adjustedValues.durationRatio != 1.0) {
-              stepDistance *= adjustedValues.distanceRatio;
-              stepDuration *= adjustedValues.durationRatio;
-            }
+            final location =
+                maneuver['location'] != null
+                    ? LatLng(maneuver['location'][1], maneuver['location'][0])
+                    : null;
 
             return {
-              'instruction': instructionText,
-              'distance': stepDistance,
-              'duration': stepDuration,
+              'instruction': instruction,
+              'distance': s['distance'] * adjusted.distanceRatio,
+              'duration': s['duration'] * adjusted.durationRatio,
               'street_name': streetName,
-              'location': locationPoint,
-              'heading': s['maneuver']?['bearing_after'],
-              'icon_type': directionIcon.iconType,
-              'icon_color': directionIcon.colorType,
-              'maneuver_type': maneuverType,
-              'maneuver_modifier': maneuverModifier,
+              'location': location,
+              'heading': maneuver['bearing_after'],
+              'icon_type': iconInfo.iconType,
+              'icon_color': iconInfo.colorType,
+              'maneuver_type': type,
+              'maneuver_modifier': modifier,
             };
           }).toList();
 
-      final transportInfo = _calculateTransportInfo(
-        mode,
-        adjustedValues.distance,
-        adjustedValues.duration,
-      );
+      final transportInfo = _calculateTransportInfo(mode, distance, duration);
 
       return DirectionsResult(
         polyline: coords,
-        distanceText: adjustedValues.distance.toString(),
-        durationText: adjustedValues.duration.toString(),
+        distanceText: distance.toString(),
+        durationText: duration.toString(),
         steps: steps,
         transportInfo: transportInfo,
         transportMode: mode,
       );
     } catch (e) {
-      debugPrint('❌ OSRM error: $e');
       return null;
     }
   }
@@ -177,159 +120,146 @@ class OsrmService {
     String? modifier,
     String streetName,
   ) {
-    String instruction = '';
     final road = streetName.isNotEmpty ? ' vào $streetName' : '';
-
     switch (type) {
       case 'turn':
-        if (modifier == 'left') {
-          instruction = 'Rẽ trái$road';
-        } else if (modifier == 'right') {
-          instruction = 'Rẽ phải$road';
-        } else if (modifier == 'straight') {
-          instruction = 'Đi thẳng$road';
-        } else if (modifier?.contains('slight') == true) {
-          instruction =
-              modifier?.contains('left') == true
-                  ? 'Rẽ nhẹ sang trái$road'
-                  : 'Rẽ nhẹ sang phải$road';
-        } else if (modifier?.contains('sharp') == true) {
-          instruction =
-              modifier?.contains('left') == true
-                  ? 'Rẽ gắt sang trái$road'
-                  : 'Rẽ gắt sang phải$road';
-        } else if (modifier == 'uturn') {
-          instruction = 'Quay đầu xe$road';
+        if (modifier == 'left') return 'Rẽ trái$road';
+        if (modifier == 'right') return 'Rẽ phải$road';
+        if (modifier == 'straight') return 'Đi thẳng$road';
+        if (modifier?.contains('slight') ?? false) {
+          return modifier!.contains('left')
+              ? 'Rẽ nhẹ sang trái$road'
+              : 'Rẽ nhẹ sang phải$road';
         }
+        if (modifier?.contains('sharp') ?? false) {
+          return modifier!.contains('left')
+              ? 'Rẽ gắt sang trái$road'
+              : 'Rẽ gắt sang phải$road';
+        }
+        if (modifier == 'uturn') return 'Quay đầu xe$road';
         break;
       case 'new name':
-        instruction = 'Tiếp tục đi trên $streetName';
-        break;
+        return 'Tiếp tục đi trên $streetName';
       case 'depart':
-        instruction = 'Bắt đầu hành trình$road';
-        break;
+        return 'Bắt đầu hành trình$road';
       case 'arrive':
-        instruction = 'Đến điểm đích';
-        break;
+        return 'Đến điểm đích';
       case 'roundabout':
       case 'rotary':
-        instruction =
-            'Đi vào vòng xoay${modifier != null ? ' và ra ở lối ra thứ $modifier' : ''}$road';
-        break;
+        return 'Đi vào vòng xoay${modifier != null ? ' và ra ở lối ra thứ $modifier' : ''}$road';
       case 'merge':
-        instruction = 'Nhập vào đường$road';
-        break;
+        return 'Nhập vào đường$road';
       case 'fork':
-        if (modifier == 'left') {
-          instruction = 'Đi theo lối rẽ trái$road';
-        } else if (modifier == 'right') {
-          instruction = 'Đi theo lối rẽ phải$road';
-        } else {
-          instruction = 'Giữ làn đường$road';
-        }
-        break;
+        if (modifier == 'left') return 'Đi theo lối rẽ trái$road';
+        if (modifier == 'right') return 'Đi theo lối rẽ phải$road';
+        return 'Giữ làn đường$road';
       case 'end of road':
-        instruction =
-            'Đi đến cuối đường rồi ${modifier == 'left' ? 'rẽ trái' : 'rẽ phải'}$road';
-        break;
+        return 'Đi đến cuối đường rồi ${modifier == 'left' ? 'rẽ trái' : 'rẽ phải'}$road';
       default:
-        instruction = 'Tiếp tục hành trình$road';
+        return 'Tiếp tục hành trình$road';
     }
-
-    return instruction;
+    return 'Tiếp tục hành trình$road';
   }
 
   _DirectionIconInfo _getDirectionIconFromOsrm(String type, String? modifier) {
-    if (type == 'turn') {
-      if (modifier == 'left') {
+    switch (type) {
+      case 'turn':
+        if (modifier == 'left') {
+          return _DirectionIconInfo(
+            DirectionIconType.turnLeft,
+            DirectionIconColorType.turn,
+          );
+        }
+        if (modifier == 'right') {
+          return _DirectionIconInfo(
+            DirectionIconType.turnRight,
+            DirectionIconColorType.turn,
+          );
+        }
+        if (modifier == 'straight') {
+          return _DirectionIconInfo(
+            DirectionIconType.straight,
+            DirectionIconColorType.straight,
+          );
+        }
+        if (modifier?.contains('slight') ?? false) {
+          return modifier!.contains('left')
+              ? _DirectionIconInfo(
+                DirectionIconType.turnSlightLeft,
+                DirectionIconColorType.turn,
+              )
+              : _DirectionIconInfo(
+                DirectionIconType.turnSlightRight,
+                DirectionIconColorType.turn,
+              );
+        }
+        if (modifier?.contains('sharp') ?? false) {
+          return modifier!.contains('left')
+              ? _DirectionIconInfo(
+                DirectionIconType.turnSlightLeft,
+                DirectionIconColorType.turn,
+              )
+              : _DirectionIconInfo(
+                DirectionIconType.turnSlightRight,
+                DirectionIconColorType.turn,
+              );
+        }
+        if (modifier == 'uturn') {
+          return _DirectionIconInfo(
+            DirectionIconType.uTurn,
+            DirectionIconColorType.special,
+          );
+        }
+        break;
+      case 'depart':
         return _DirectionIconInfo(
-          DirectionIconType.turnLeft,
-          DirectionIconColorType.turn,
+          DirectionIconType.start,
+          DirectionIconColorType.start,
         );
-      } else if (modifier == 'right') {
+      case 'arrive':
         return _DirectionIconInfo(
-          DirectionIconType.turnRight,
-          DirectionIconColorType.turn,
+          DirectionIconType.place,
+          DirectionIconColorType.destination,
         );
-      } else if (modifier == 'straight') {
+      case 'roundabout':
+      case 'rotary':
         return _DirectionIconInfo(
-          DirectionIconType.straight,
-          DirectionIconColorType.straight,
-        );
-      } else if (modifier?.contains('slight') == true &&
-          modifier?.contains('left') == true) {
-        return _DirectionIconInfo(
-          DirectionIconType.turnSlightLeft,
-          DirectionIconColorType.turn,
-        );
-      } else if (modifier?.contains('slight') == true &&
-          modifier?.contains('right') == true) {
-        return _DirectionIconInfo(
-          DirectionIconType.turnSlightRight,
-          DirectionIconColorType.turn,
-        );
-      } else if (modifier?.contains('sharp') == true &&
-          modifier?.contains('left') == true) {
-        return _DirectionIconInfo(
-          DirectionIconType.turnSlightLeft,
-          DirectionIconColorType.turn,
-        );
-      } else if (modifier?.contains('sharp') == true &&
-          modifier?.contains('right') == true) {
-        return _DirectionIconInfo(
-          DirectionIconType.turnSlightRight,
-          DirectionIconColorType.turn,
-        );
-      } else if (modifier == 'uturn') {
-        return _DirectionIconInfo(
-          DirectionIconType.uTurn,
+          DirectionIconType.roundabout,
           DirectionIconColorType.special,
         );
-      }
-    } else if (type == 'depart') {
-      return _DirectionIconInfo(
-        DirectionIconType.start,
-        DirectionIconColorType.start,
-      );
-    } else if (type == 'arrive') {
-      return _DirectionIconInfo(
-        DirectionIconType.place,
-        DirectionIconColorType.destination,
-      );
-    } else if (type == 'roundabout' || type == 'rotary') {
-      return _DirectionIconInfo(
-        DirectionIconType.roundabout,
-        DirectionIconColorType.special,
-      );
-    } else if (type == 'merge') {
-      return _DirectionIconInfo(
-        DirectionIconType.merge,
-        DirectionIconColorType.special,
-      );
-    } else if (type == 'fork') {
-      if (modifier == 'left') {
+      case 'merge':
         return _DirectionIconInfo(
-          DirectionIconType.forkLeft,
+          DirectionIconType.merge,
           DirectionIconColorType.special,
         );
-      } else if (modifier == 'right') {
-        return _DirectionIconInfo(
-          DirectionIconType.forkRight,
-          DirectionIconColorType.special,
-        );
-      }
-    } else if (type == 'end of road') {
-      if (modifier == 'left') {
-        return _DirectionIconInfo(
-          DirectionIconType.turnLeft,
-          DirectionIconColorType.turn,
-        );
-      } else if (modifier == 'right') {
-        return _DirectionIconInfo(
-          DirectionIconType.turnRight,
-          DirectionIconColorType.turn,
-        );
-      }
+      case 'fork':
+        if (modifier == 'left') {
+          return _DirectionIconInfo(
+            DirectionIconType.forkLeft,
+            DirectionIconColorType.special,
+          );
+        }
+        if (modifier == 'right') {
+          return _DirectionIconInfo(
+            DirectionIconType.forkRight,
+            DirectionIconColorType.special,
+          );
+        }
+        break;
+      case 'end of road':
+        if (modifier == 'left') {
+          return _DirectionIconInfo(
+            DirectionIconType.turnLeft,
+            DirectionIconColorType.turn,
+          );
+        }
+        if (modifier == 'right') {
+          return _DirectionIconInfo(
+            DirectionIconType.turnRight,
+            DirectionIconColorType.turn,
+          );
+        }
+        break;
     }
     return _DirectionIconInfo(
       DirectionIconType.continue_,
@@ -344,33 +274,27 @@ class OsrmService {
   ) {
     switch (mode) {
       case 'car':
-        final fuelConsumption = distance / 1000 * 0.07;
-        final co2Emission = distance / 1000 * 120;
         return {
-          'fuel_consumption': fuelConsumption.toStringAsFixed(2),
-          'co2_emission': co2Emission.toStringAsFixed(0),
+          'fuel_consumption': (distance / 1000 * 0.07).toStringAsFixed(2),
+          'co2_emission': (distance / 1000 * 120).toStringAsFixed(0),
           'avg_speed': (distance / duration * 3.6).toStringAsFixed(1),
         };
       case 'walk':
-        final calories = distance / 1000 * 65;
         return {
-          'calories': calories.toStringAsFixed(0),
+          'calories': (distance / 1000 * 65).toStringAsFixed(0),
           'steps': (distance * 1.31).toStringAsFixed(0),
           'health_index': 'high',
         };
-      case 'motorbike':
-        final fuelConsumption = distance / 1000 * 0.03;
-        final co2Emission = distance / 1000 * 80;
+      case 'bike':
         return {
-          'fuel_consumption': fuelConsumption.toStringAsFixed(2),
-          'co2_emission': co2Emission.toStringAsFixed(0),
+          'fuel_consumption': (distance / 1000 * 0.03).toStringAsFixed(2),
+          'co2_emission': (distance / 1000 * 80).toStringAsFixed(0),
           'avg_speed': (distance / duration * 3.6).toStringAsFixed(1),
         };
       case 'bus':
-        final co2Emission = distance / 1000 * 30;
         return {
           'cost_estimate': (distance / 1000 * 5000).toStringAsFixed(0),
-          'co2_emission': co2Emission.toStringAsFixed(0),
+          'co2_emission': (distance / 1000 * 30).toStringAsFixed(0),
           'health_index': 'medium',
           'passenger_count': '20-30',
         };
@@ -385,35 +309,21 @@ class OsrmService {
     double duration,
     int waypointCount,
   ) {
-    double adjustedDistance = distance;
-    double adjustedDuration = duration;
     double distanceRatio = 1.0;
     double durationRatio = 1.0;
 
-    switch (mode) {
-      case 'car':
-        break;
-
-      case 'walk':
-        distanceRatio = 0.95;
-        durationRatio = 4.5;
-        break;
-
-      case 'motorbike':
-        distanceRatio = 1.0;
-        durationRatio = 1.15;
-        break;
-
-      default:
-        break;
+    if (mode == 'walk') {
+      distanceRatio = 0.95;
+      durationRatio = 4.5;
+    } else if (mode == 'bike') {
+      durationRatio = 1.15;
     }
 
-    adjustedDistance = distance * distanceRatio;
-    adjustedDuration = duration * durationRatio;
+    double adjustedDistance = distance * distanceRatio;
+    double adjustedDuration = duration * durationRatio;
 
     if (waypointCount > 10) {
-      double complexityFactor = 1.0 + (waypointCount - 10) * 0.01;
-      adjustedDuration *= complexityFactor;
+      adjustedDuration *= 1.0 + (waypointCount - 10) * 0.01;
     }
 
     return _TransportAdjustment(
@@ -473,12 +383,9 @@ class DirectionsResult {
     final duration = double.parse(durationText);
     final hours = (duration / 3600).floor();
     final minutes = ((duration % 3600) / 60).ceil();
-
-    if (hours > 0) {
-      return '$hours giờ ${minutes > 0 ? '$minutes phút' : ''}';
-    } else {
-      return '$minutes phút';
-    }
+    return hours > 0
+        ? '$hours giờ ${minutes > 0 ? '$minutes phút' : ''}'
+        : '$minutes phút';
   }
 }
 

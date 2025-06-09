@@ -1,8 +1,10 @@
+import 'dart:async'; // Import Timer
+
 import 'package:busmapcantho/core/services/notification_snackbar_service.dart';
 import 'package:busmapcantho/core/utils/validators.dart';
 import 'package:busmapcantho/presentation/cubits/password/password_cubit.dart';
 import 'package:busmapcantho/presentation/routes/app_routes.dart';
-import 'package:busmapcantho/presentation/widgets/common/custom_app_bar.dart';
+import 'package:busmapcantho/presentation/widgets/custom_app_bar.dart';
 import 'package:busmapcantho/presentation/widgets/otp_input_widget.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -26,14 +28,40 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   String? _otpValue;
   bool _obscureNewPassword = true;
 
+  Timer? _otpResendTimer;
+  int _otpResendCountdownSeconds = 60;
+  bool _canResendPasswordOtp = false;
+
   @override
   void initState() {
     super.initState();
     if (widget.email.isNotEmpty) {
       _emailController.text = widget.email;
     }
-    // Optionally, initialize cubit state if needed, though it's set in cubit constructor
-    // context.read<PasswordCubit>().goBackToEmailInput(); // Example if needed
+    // Timer will be started when OTP screen is shown
+  }
+
+  void _startResendPasswordOtpTimer() {
+    if (!mounted) return;
+    setState(() {
+      _canResendPasswordOtp = false;
+      _otpResendCountdownSeconds = 60;
+    });
+    _otpResendTimer?.cancel();
+    _otpResendTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        setState(() {
+          if (_otpResendCountdownSeconds > 0) {
+            _otpResendCountdownSeconds--;
+          } else {
+            _otpResendTimer?.cancel();
+            _canResendPasswordOtp = true;
+          }
+        });
+      } else {
+        _otpResendTimer?.cancel();
+      }
+    });
   }
 
   void _handleBackButton(PasswordState currentState) {
@@ -58,11 +86,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       listener: (context, state) {
         if (state is PasswordRequestOtpSuccess) {
           context.showSuccessSnackBar('otpSentSuccess'.tr());
+          _startResendPasswordOtpTimer(); // Start timer when OTP is sent
         } else if (state is PasswordResetSuccess) {
           context.showSuccessSnackBar('resetPasswordSuccess'.tr());
           context.go(AppRoutes.signIn);
         } else if (state is PasswordError) {
           context.showErrorSnackBar(state.message);
+        } else if (state is PasswordOtpResent) {
+          context.showSuccessSnackBar('otpResentSuccessfully'.tr());
+          _startResendPasswordOtpTimer(); // Restart timer
+        } else if (state is PasswordOtpResendError) {
+          context.showErrorSnackBar(state.message);
+          if (mounted && _otpResendCountdownSeconds == 0) {
+            setState(() {
+              _canResendPasswordOtp = true; // Allow retry if timer finished
+            });
+          }
         }
       },
       builder: (context, state) {
@@ -190,10 +229,17 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     if (_emailController.text.isEmpty && email.isNotEmpty) {
       _emailController.text = email;
     }
+    // Accessing cubit's state directly for isLoading for resend button
+    final passwordCubitState = context.watch<PasswordCubit>().state;
+    final isResendingOtp = passwordCubitState is PasswordOtpResending;
+
     return ListView(
       shrinkWrap: true,
       children: [
-        Text(tr('otpSentTo', args: [email]), style: theme.textTheme.titleMedium),
+        Text(
+          tr('otpSentTo', args: [email]),
+          style: theme.textTheme.titleMedium,
+        ),
         const SizedBox(height: 24),
         OtpInputWidget(
           length: 6,
@@ -231,6 +277,41 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               ),
             ),
           ),
+        const SizedBox(height: 16),
+        TextButton(
+          onPressed:
+              _canResendPasswordOtp && !isResendingOtp
+                  ? () {
+                    context.read<PasswordCubit>().resendPasswordResetOtp(email);
+                  }
+                  : null,
+          child:
+              isResendingOtp
+                  ? SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        theme.primaryColor,
+                      ),
+                    ),
+                  )
+                  : Text(
+                    _canResendPasswordOtp
+                        ? 'resendOtp'.tr()
+                        : tr(
+                          'resendOtpIn',
+                          args: [_otpResendCountdownSeconds.toString()],
+                        ),
+                    style: TextStyle(
+                      color:
+                          _canResendPasswordOtp && !isResendingOtp
+                              ? theme.primaryColor
+                              : theme.disabledColor,
+                    ),
+                  ),
+        ),
       ],
     );
   }
@@ -306,6 +387,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   void dispose() {
     _emailController.dispose();
     _newPasswordController.dispose();
+    _otpResendTimer?.cancel(); // Dispose the timer
     super.dispose();
   }
 }

@@ -25,16 +25,13 @@ class DirectionsCubit extends Cubit<DirectionsState> {
     return _cachedResults;
   }
 
-  Future<void> getDirectionsForAllModes(
-      LatLng start,
-      LatLng end,
-      ) async {
+  Future<void> getDirectionsForAllModes(LatLng start, LatLng end) async {
     _lastStart = start;
     _lastEnd = end;
 
     emit(DirectionsLoading());
 
-    const modes = ['car', 'walk', 'motorbike'];
+    const modes = ['car', 'walk', 'bike'];
     bool hasError = false;
     String errorMessage = '';
 
@@ -81,10 +78,10 @@ class DirectionsCubit extends Cubit<DirectionsState> {
   }
 
   Future<void> getDirections(
-      LatLng start,
-      LatLng end,
-      {String mode = 'car'}
-      ) async {
+    LatLng start,
+    LatLng end, {
+    String mode = 'car',
+  }) async {
     _lastStart = start;
     _lastEnd = end;
 
@@ -96,14 +93,12 @@ class DirectionsCubit extends Cubit<DirectionsState> {
     emit(DirectionsLoading());
 
     try {
-      final result = await _osrmService.getDirections(
-          start,
-          end,
-          mode: mode
-      );
+      final result = await _osrmService.getDirections(start, end, mode: mode);
 
       if (result == null) {
-        emit(DirectionsError('Không thể tìm thấy đường đi với phương tiện này.'));
+        emit(
+          DirectionsError('Không thể tìm thấy đường đi với phương tiện này.'),
+        );
         return;
       }
 
@@ -128,10 +123,10 @@ class DirectionsCubit extends Cubit<DirectionsState> {
   }
 
   Future<void> changeTransportMode(
-      String mode,
-      LatLng start,
-      LatLng end
-      ) async {
+    String mode,
+    LatLng start,
+    LatLng end,
+  ) async {
     final currentState = state;
     if (currentState is DirectionsLoaded) {
       if (currentState.transportMode == mode) {

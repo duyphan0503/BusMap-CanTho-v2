@@ -74,4 +74,8 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<String?> getStoredToken() => _remote.getAccessToken();
+
+  @override
+  Future<void> resendEmailOtp({required String email, bool isReset = false}) =>
+      _remote.resendEmailOtp(email: email, isReset: isReset);
 }

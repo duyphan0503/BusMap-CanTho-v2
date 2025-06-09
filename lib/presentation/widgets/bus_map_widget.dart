@@ -143,10 +143,16 @@ class _BusMapWidgetState extends State<BusMapWidget>
     // Khi nhận animateToStop mới, animate đến vị trí stop đó
     if (widget.animateToStop != null &&
         (oldWidget.animateToStop == null ||
-         widget.animateToStop!.id != oldWidget.animateToStop?.id)) {
+            widget.animateToStop!.id != oldWidget.animateToStop?.id)) {
       _mapCtrl.animateTo(
-        dest: osm.LatLng(widget.animateToStop!.latitude, widget.animateToStop!.longitude),
-        zoom: _mapCtrl.mapController.camera.zoom < 16.0 ? 16.0 : _mapCtrl.mapController.camera.zoom,
+        dest: osm.LatLng(
+          widget.animateToStop!.latitude,
+          widget.animateToStop!.longitude,
+        ),
+        zoom:
+            _mapCtrl.mapController.camera.zoom < 16.0
+                ? 16.0
+                : _mapCtrl.mapController.camera.zoom,
       );
     }
   }
@@ -165,15 +171,17 @@ class _BusMapWidgetState extends State<BusMapWidget>
     super.dispose();
   }
 
-  void _updateRouteScreenMapController() { // Added method
+  void _updateRouteScreenMapController() {
+    // Added method
     if (widget.routeScreenMapController != null) {
       widget.routeScreenMapController!.animateToStop = (BusStop stop) {
         if (mounted) {
           _mapCtrl.animateTo(
             dest: osm.LatLng(stop.latitude, stop.longitude),
-            zoom: _mapCtrl.mapController.camera.zoom < 15.0
-                ? 15.0
-                : _mapCtrl.mapController.camera.zoom,
+            zoom:
+                _mapCtrl.mapController.camera.zoom < 15.0
+                    ? 15.0
+                    : _mapCtrl.mapController.camera.zoom,
           );
         }
       };
@@ -320,7 +328,10 @@ class _BusMapWidgetState extends State<BusMapWidget>
             right: 0,
             child: Center(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.black.withAlpha(50),
                   borderRadius: BorderRadius.circular(8),
@@ -510,11 +521,11 @@ class MapControls extends StatelessWidget {
     return Stack(
       children: [
         if (showStepNavigation)
-        Positioned(
-          bottom: 16,
-          right: 16,
-          child: _buildStepNavigationControls(theme),
-        ),
+          Positioned(
+            bottom: 16,
+            right: 16,
+            child: _buildStepNavigationControls(theme),
+          ),
         Positioned(
           top: 16,
           right: 16,
@@ -572,9 +583,10 @@ class MapControls extends StatelessWidget {
         FloatingActionButton(
           heroTag: 'prev_step',
           mini: true,
-          backgroundColor: onPrevStep == null
-              ? theme.disabledColor
-              : theme.colorScheme.primary,
+          backgroundColor:
+              onPrevStep == null
+                  ? theme.disabledColor
+                  : theme.colorScheme.primary,
           foregroundColor: theme.colorScheme.onPrimary,
           onPressed: onPrevStep,
           child: const Icon(Icons.arrow_back),
@@ -583,9 +595,10 @@ class MapControls extends StatelessWidget {
         FloatingActionButton(
           heroTag: 'next_step',
           mini: true,
-          backgroundColor: onNextStep == null
-              ? theme.disabledColor
-              : theme.colorScheme.primary,
+          backgroundColor:
+              onNextStep == null
+                  ? theme.disabledColor
+                  : theme.colorScheme.primary,
           foregroundColor: theme.colorScheme.onPrimary,
           onPressed: onNextStep,
           child: const Icon(Icons.arrow_forward),
@@ -637,7 +650,9 @@ class StopInfoCard extends StatelessWidget {
                   Expanded(
                     child: Text(
                       stop.name,
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                      style: theme.textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   IconButton(
@@ -655,13 +670,18 @@ class StopInfoCard extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.directions, size: 18),
-                      label: Text('getDirections'.tr(), overflow: TextOverflow.ellipsis),
+                      label: Text(
+                        'getDirections'.tr(),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       onPressed: onDirections,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.primary,
                         foregroundColor: theme.colorScheme.onPrimary,
                         textStyle: theme.textTheme.labelLarge,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -670,13 +690,18 @@ class StopInfoCard extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.list, size: 18),
-                      label: Text('routes'.tr(), overflow: TextOverflow.ellipsis),
+                      label: Text(
+                        'routes'.tr(),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                       onPressed: () => onRoutes(stop),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: theme.colorScheme.secondary,
                         foregroundColor: theme.colorScheme.onSecondary,
                         textStyle: theme.textTheme.labelLarge,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -693,11 +718,15 @@ class StopInfoCard extends StatelessWidget {
                     children: [
                       Text(
                         distanceLabel!,
-                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       Text(
                         durationLabel!,
-                        style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       TextButton(
                         onPressed: onClose,
@@ -717,4 +746,3 @@ class StopInfoCard extends StatelessWidget {
     );
   }
 }
-

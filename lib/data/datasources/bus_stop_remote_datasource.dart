@@ -1,4 +1,3 @@
-import 'package:flutter/cupertino.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -9,7 +8,7 @@ class BusStopRemoteDatasource {
   final SupabaseClient _client;
 
   BusStopRemoteDatasource([SupabaseClient? client])
-      : _client = client ?? Supabase.instance.client;
+    : _client = client ?? Supabase.instance.client;
 
   Future<List<BusStop>> getBusStops() async {
     try {
@@ -23,7 +22,7 @@ class BusStopRemoteDatasource {
   Future<BusStop> getBusStopById(String id) async {
     try {
       final response =
-      await _client.from('stops').select().eq('id', id).single();
+          await _client.from('stops').select().eq('id', id).single();
       return BusStop.fromJson(response);
     } catch (e) {
       throw Exception('Failed to load bus stop: $e');
@@ -44,12 +43,12 @@ class BusStopRemoteDatasource {
   }
 
   Future<List<BusStop>> getNearbyBusStops(
-      double lat,
-      double lng,
-      double radiusInMeters, {
-        int limit = 10,
-        int offset = 0,
-      }) async {
+    double lat,
+    double lng,
+    double radiusInMeters, {
+    int limit = 10,
+    int offset = 0,
+  }) async {
     try {
       final response = await _client.rpc(
         'get_nearby_stops',
@@ -70,7 +69,6 @@ class BusStopRemoteDatasource {
 
       return response.map((data) => BusStop.fromJson(data)).toList();
     } catch (e) {
-      debugPrint('Error getting nearby bus stops: $e');
       throw Exception('Failed to get nearby bus stops: $e');
     }
   }

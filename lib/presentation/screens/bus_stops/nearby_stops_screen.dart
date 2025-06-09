@@ -82,7 +82,7 @@ class _NearbyStopsScreenState extends State<NearbyStopsScreen> {
 
   void _navigateToMap(BusStop stop) {
     context.showInfoSnackBar('viewingStopOnMap'.tr());
-    context.go(AppRoutes.map, extra: stop);
+    context.go(AppRoutes.map, extra: stop.id);
   }
 
   void _navigateToDirections(BusStop stop) {

@@ -1,22 +1,28 @@
 import 'dart:async';
 
 import 'package:busmapcantho/core/services/places_service.dart';
-import 'package:busmapcantho/presentation/routes/app_routes.dart';
+import 'package:busmapcantho/data/datasources/local/favorite_label_storage.dart';
 import 'package:busmapcantho/presentation/widgets/bus_map_widget.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as latlong;
 
 import '../../../core/di/injection.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../cubits/route_finder/route_finder_cubit.dart';
 import '../../cubits/route_finder/route_finder_state.dart';
-import '../../widgets/common/custom_app_bar.dart';
+import '../../widgets/custom_app_bar.dart';
 
 class PickLocationScreen extends StatefulWidget {
-  const PickLocationScreen({super.key});
+  final String? label;
+  final bool addToLabelMode;
+
+  const PickLocationScreen({
+    super.key,
+    this.label,
+    this.addToLabelMode = false,
+  });
 
   @override
   State<PickLocationScreen> createState() => _PickLocationScreenState();
@@ -59,7 +65,7 @@ class _PickLocationScreenState extends State<PickLocationScreen> {
       );
       if (mounted && address != null) {
         setState(() {
-          _centerAddress = address.displayName;
+          _centerAddress = address.placeName;
         });
       } else if (mounted) {
         setState(() {
@@ -87,34 +93,54 @@ class _PickLocationScreenState extends State<PickLocationScreen> {
     }
   }
 
-  void _confirmSelection() {
+  Future<void> _saveLocationToLabel(
+    latlong.LatLng latLng,
+    String address,
+  ) async {
+    final storage = FavoritePlaceStorage();
+    final placeMap = {
+      'label': widget.label,
+      'display_name': address,
+      'lat': latLng.latitude.toString(),
+      'lon': latLng.longitude.toString(),
+    };
+    await storage.savePlaces(
+      await storage.loadPlaces()
+        ..add(placeMap),
+    );
+  }
+
+  void _confirmSelection() async {
     if (_currentMapCenter == null) {
-      Navigator.of(context).pop(false); // Return false if no selection made
+      Navigator.of(context).pop(false);
       return;
     }
-
     final selectionType = _routeFinderCubit.state.selectionType;
     final latLng = latlong.LatLng(
       _currentMapCenter!.latitude,
       _currentMapCenter!.longitude,
     );
-
+    if (widget.addToLabelMode) {
+      await _saveLocationToLabel(latLng, _centerAddress);
+      if (mounted) {
+        Navigator.of(context).pop(true);
+      }
+      return;
+    }
     if (selectionType == LocationSelectionType.start) {
       _routeFinderCubit.setStart(name: _centerAddress, latLng: latLng);
     } else {
       _routeFinderCubit.setEnd(name: _centerAddress, latLng: latLng);
     }
     _routeFinderCubit.resetSelection();
-    Navigator.of(context).pop(true); // Return true to indicate successful selection
+    Navigator.of(context).pop(true);
   }
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: CustomAppBar(
-        title: 'pickLocationOnMapTitle'.tr(),
-      ),
+      appBar: CustomAppBar(title: 'pickLocationOnMapTitle'.tr()),
       body: Stack(
         children: [
           BusMapWidget(

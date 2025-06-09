@@ -28,6 +28,18 @@ class PasswordCubit extends Cubit<PasswordState> {
     }
   }
 
+  void resendPasswordResetOtp(String email) async {
+    emit(PasswordOtpResending(email));
+    try {
+      await _requestPasswordResetOtpUseCase(email);
+      emit(PasswordOtpResent(email));
+      emit(PasswordOtpInputState(email));
+    } catch (e) {
+      emit(PasswordOtpResendError(email, e.toString()));
+      emit(PasswordOtpInputState(email));
+    }
+  }
+
   void proceedToNewPasswordStep(String email, String otpCode) {
     emit(PasswordNewPasswordInputState(email, otpCode));
   }

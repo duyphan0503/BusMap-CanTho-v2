@@ -21,6 +21,15 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final List<_Feature> features = _buildFeatures(context);
+    final statusBarHeight = MediaQuery.of(context).padding.top;
+
+    const double desiredGapPortrait = 16.0;
+    const double desiredGapLandscape = 16.0;
+
+    final double topSpacerHeightPortrait =
+        statusBarHeight + _appBarHeight + desiredGapPortrait;
+    final double topSpacerHeightLandscape =
+        statusBarHeight + _appBarHeight + desiredGapLandscape;
 
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
@@ -45,7 +54,7 @@ class HomeScreen extends StatelessWidget {
               child: SingleChildScrollView(
                 child: Column(
                   children: [
-                    const SizedBox(height: _appBarHeight + 16),
+                    SizedBox(height: topSpacerHeightLandscape),
                     _SearchBar(onTap: () => context.push(AppRoutes.search)),
                     _FeatureSection(
                       features: features,
@@ -73,7 +82,7 @@ class HomeScreen extends StatelessWidget {
             ),
             child: Column(
               children: [
-                const SizedBox(height: _appBarHeight + 24),
+                SizedBox(height: topSpacerHeightPortrait), // Adjusted spacer
                 _SearchBar(onTap: () => context.push(AppRoutes.search)),
                 _FeatureSection(
                   features: features,
@@ -90,7 +99,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  /// Builds the list of features for quick access.
   List<_Feature> _buildFeatures(BuildContext context) => [
     _Feature(
       icon: Icons.directions_bus,
@@ -145,7 +153,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  /// Handles navigation logic for feature tiles.
   void _navigateToFeature(BuildContext context, String route) {
     if (route == AppRoutes.map) {
       context.push(route);
@@ -158,7 +165,6 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
-/// Widget for the search bar on the home screen.
 class _SearchBar extends StatelessWidget {
   final VoidCallback onTap;
 
@@ -168,9 +174,11 @@ class _SearchBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Padding(
-      padding: const EdgeInsets.symmetric(
-        horizontal: HomeScreen._horizontalPadding,
-        vertical: 16,
+      padding: const EdgeInsets.only(
+        left: HomeScreen._horizontalPadding,
+        right: HomeScreen._horizontalPadding,
+        top: 8,
+        bottom: 16,
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -214,7 +222,6 @@ class _SearchBar extends StatelessWidget {
   }
 }
 
-/// Widget for the quick access feature section.
 class _FeatureSection extends StatelessWidget {
   final List<_Feature> features;
   final ValueChanged<String> onFeatureTap;
@@ -241,33 +248,40 @@ class _FeatureSection extends StatelessWidget {
             children: [
               Text(
                 'quickAccess'.tr(),
-                style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 4),
               LayoutBuilder(
                 builder: (context, constraints) {
-                  final needsScrolling = features.length > 4;
-                  final totalSpacing = HomeScreen._tileSpacing * (features.length - 1);
+                  final needsScrolling =
+                      features.length > 4; // Example threshold
+                  final totalSpacing =
+                      HomeScreen._tileSpacing * (features.length - 1);
                   final availableWidth = constraints.maxWidth;
+
                   final rowHeight = HomeScreen._tileWidth + 8;
 
                   if (!needsScrolling) {
-                    final itemWidth = (availableWidth - totalSpacing) / features.length;
+                    final itemWidth =
+                        (availableWidth - totalSpacing) / features.length;
                     return SizedBox(
                       height: rowHeight,
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: features.map((f) {
-                          return SizedBox(
-                            width: itemWidth,
-                            height: HomeScreen._tileWidth,
-                            child: FeatureTile(
-                              icon: f.icon,
-                              label: f.label,
-                              onTap: () => onFeatureTap(f.route),
-                            ),
-                          );
-                        }).toList(),
+                        children:
+                            features.map((f) {
+                              return SizedBox(
+                                width: itemWidth,
+                                height: HomeScreen._tileWidth,
+                                child: FeatureTile(
+                                  icon: f.icon,
+                                  label: f.label,
+                                  onTap: () => onFeatureTap(f.route),
+                                ),
+                              );
+                            }).toList(),
                       ),
                     );
                   } else {
@@ -277,7 +291,9 @@ class _FeatureSection extends StatelessWidget {
                         padding: EdgeInsets.zero,
                         scrollDirection: Axis.horizontal,
                         itemCount: features.length,
-                        separatorBuilder: (_, __) => const SizedBox(width: HomeScreen._tileSpacing),
+                        separatorBuilder:
+                            (_, __) =>
+                                const SizedBox(width: HomeScreen._tileSpacing),
                         itemBuilder: (context, index) {
                           final f = features[index];
                           return SizedBox(
@@ -303,7 +319,6 @@ class _FeatureSection extends StatelessWidget {
   }
 }
 
-/// Widget for the live map preview section.
 class _MapPreview extends StatelessWidget {
   const _MapPreview();
 
@@ -326,7 +341,9 @@ class _MapPreview extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(gradient: AppColors.primaryGradient),
+              decoration: const BoxDecoration(
+                gradient: AppColors.primaryGradient,
+              ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
@@ -345,9 +362,11 @@ class _MapPreview extends StatelessWidget {
                   const Spacer(),
                   IconButton(
                     padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
                     onPressed: () => context.go(AppRoutes.map),
                     icon: const Icon(Icons.open_in_full),
                     iconSize: 24,
+                    color: AppColors.textOnPrimary,
                   ),
                 ],
               ),
@@ -360,7 +379,6 @@ class _MapPreview extends StatelessWidget {
   }
 }
 
-/// Model for a feature tile.
 class _Feature {
   final IconData icon;
   final String label;

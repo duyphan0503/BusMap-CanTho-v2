@@ -1,5 +1,6 @@
 import 'package:busmapcantho/presentation/screens/auth/otp_verification_screen.dart';
 import 'package:busmapcantho/presentation/screens/home/directions_map_screen.dart';
+import 'package:busmapcantho/presentation/screens/home/pick_favorite_place_screen.dart';
 import 'package:busmapcantho/presentation/screens/notifications/notifications_screen.dart';
 import 'package:busmapcantho/presentation/screens/route_stops/route_stops_screen.dart';
 import 'package:easy_localization/easy_localization.dart';
@@ -109,7 +110,19 @@ class AppRouter {
       ),
       GoRoute(
         path: AppRoutes.pickLocationOnMap,
-        builder: (context, state) => PickLocationScreen(),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          return PickLocationScreen(
+            addToLabelMode: extra?['addToLabelMode'] ?? false,
+            label: extra?['label'],
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.pickFavoritePlace,
+        builder:
+            (context, state) =>
+                PickFavoritePlaceScreen(label: state.extra as String),
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,

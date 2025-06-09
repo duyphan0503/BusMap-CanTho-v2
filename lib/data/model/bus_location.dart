@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:typed_data';
 
 class BusLocation {
@@ -58,7 +57,9 @@ class BusLocation {
         lat = y;
       } else {
         // WKT format, e.g. "SRID=4326;POINT(lng lat)" or "POINT(lng lat)"
-        final match = RegExp(r'POINT\(\s*([\d\.-]+)\s+([\d\.-]+)\s*\)').firstMatch(s);
+        final match = RegExp(
+          r'POINT\(\s*([\d\.-]+)\s+([\d\.-]+)\s*\)',
+        ).firstMatch(s);
         if (match != null) {
           lng = double.tryParse(match.group(1)!) ?? 0;
           lat = double.tryParse(match.group(2)!) ?? 0;

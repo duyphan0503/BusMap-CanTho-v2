@@ -1,14 +1,16 @@
+import 'dart:async';
+
 import 'package:busmapcantho/core/services/notification_snackbar_service.dart';
 import 'package:busmapcantho/presentation/routes/app_routes.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:easy_localization/easy_localization.dart';
 
+import '../../../core/theme/app_colors.dart';
 import '../../cubits/otp/otp_cubit.dart';
 import '../../cubits/otp/otp_state.dart';
 import '../../widgets/otp_input_widget.dart';
-import '../../../core/theme/app_colors.dart';
 
 class OtpVerificationScreen extends StatefulWidget {
   final String email;
@@ -20,6 +22,43 @@ class OtpVerificationScreen extends StatefulWidget {
 }
 
 class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
+  Timer? _timer;
+  int _countdownSeconds = 60;
+  bool _canResendOtp = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _startResendOtpTimer();
+  }
+
+  void _startResendOtpTimer() {
+    _canResendOtp = false;
+    _countdownSeconds = 60;
+    _timer?.cancel(); // Cancel any existing timer
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (mounted) {
+        // Check if the widget is still in the tree
+        setState(() {
+          if (_countdownSeconds > 0) {
+            _countdownSeconds--;
+          } else {
+            _timer?.cancel();
+            _canResendOtp = true;
+          }
+        });
+      } else {
+        _timer?.cancel(); // Cancel timer if widget is disposed
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -31,6 +70,17 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
           context.go(AppRoutes.home);
         } else if (state is OtpError) {
           context.showErrorSnackBar(state.message);
+        } else if (state is OtpResent) {
+          context.showSuccessSnackBar('otpResentSuccessfully'.tr());
+          // Timer is already started by the resend button's onPressed logic
+        } else if (state is OtpResendError) {
+          context.showErrorSnackBar(state.message);
+          // Allow user to try again if countdown finished
+          if (_countdownSeconds == 0 && mounted) {
+            setState(() {
+              _canResendOtp = true;
+            });
+          }
         }
       },
       builder: (context, state) {
@@ -40,7 +90,9 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
             child: Container(
               decoration: const BoxDecoration(
                 gradient: AppColors.primaryGradient,
-                borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(12),
+                ),
               ),
               child: AppBar(
                 backgroundColor: Colors.transparent,
@@ -81,6 +133,38 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
                 ),
                 const SizedBox(height: 24),
                 if (state is OtpLoading) const CircularProgressIndicator(),
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed:
+                      _canResendOtp && state is! OtpResending
+                          ? () {
+                            context.read<OtpCubit>().resendEmailOtp(
+                              email: widget.email,
+                            );
+                            _startResendOtpTimer(); // Restart timer on resend
+                          }
+                          : null,
+                  child:
+                      state is OtpResending
+                          ? SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                theme.primaryColor,
+                              ),
+                            ),
+                          )
+                          : Text(
+                            _canResendOtp
+                                ? 'resendOtp'.tr()
+                                : tr(
+                                  'resendOtpIn',
+                                  args: [_countdownSeconds.toString()],
+                                ),
+                          ),
+                ),
               ],
             ),
           ),

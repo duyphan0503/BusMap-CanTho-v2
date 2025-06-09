@@ -6,7 +6,7 @@ class DirectionStepsList extends StatelessWidget {
   final List<Map<String, dynamic>> steps;
   final String? distance, duration;
   final ScrollController scrollController;
-  final void Function(int stepIndex)? onStepTap; // Thêm callback
+  final void Function(int stepIndex)? onStepTap;
 
   const DirectionStepsList({
     super.key,
@@ -19,17 +19,25 @@ class DirectionStepsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView.separated(
+    return SingleChildScrollView(
       controller: scrollController,
-      padding: const EdgeInsets.symmetric(vertical: 0),
-      physics: const ClampingScrollPhysics(),
-      itemCount: steps.length + 1,
-      separatorBuilder: (_, __) => const Divider(height: 1),
-      itemBuilder:
-          (context, idx) =>
-              idx == 0
-                  ? _buildSummaryItem()
-                  : _buildDirectionStep(steps[idx - 1], idx - 1),
+      padding: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildSummaryItem(),
+          ...steps.asMap().entries.map((entry) {
+            final stepIndex = entry.key;
+            return Column(
+              children: [
+                const Divider(height: 1),
+                _buildDirectionStep(entry.value, stepIndex),
+              ],
+            );
+          }),
+        ],
+      ),
     );
   }
 
@@ -52,7 +60,7 @@ class DirectionStepsList extends StatelessWidget {
                   style: const TextStyle(
                     color: Colors.green,
                     fontWeight: FontWeight.bold,
-                    fontSize: 22, // tăng cỡ chữ
+                    fontSize: 22,
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -60,7 +68,7 @@ class DirectionStepsList extends StatelessWidget {
                   '(${distance ?? '-'})',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
-                    fontSize: 20, // tăng cỡ chữ
+                    fontSize: 20,
                   ),
                 ),
               ],
@@ -113,12 +121,25 @@ class DirectionStepsList extends StatelessWidget {
         exitNumber != null ? 'Lối ra số $exitNumber' : null;
 
     return ListTile(
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+      minVerticalPadding: 6,
+      dense: true,
       leading: Icon(directionIcon, color: iconColor),
-      title: Text(step['instruction'] ?? ''),
+      title: Text(
+        step['instruction'] ?? '',
+        maxLines: 2,
+        overflow: TextOverflow.ellipsis,
+      ),
       subtitle: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          if (detailedSubtitle.isNotEmpty) Text(detailedSubtitle),
+          if (detailedSubtitle.isNotEmpty)
+            Text(
+              detailedSubtitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           if (exitInfo != null)
             Text(
               exitInfo,
@@ -137,10 +158,7 @@ class DirectionStepsList extends StatelessWidget {
                 color: Colors.red,
               )
               : null,
-      onTap:
-          onStepTap != null
-              ? () => onStepTap!(stepIndex)
-              : null, // Gọi callback khi tap
+      onTap: onStepTap != null ? () => onStepTap!(stepIndex) : null,
     );
   }
 

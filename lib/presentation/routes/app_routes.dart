@@ -21,6 +21,7 @@ class AppRoutes {
   static const routeDetail = '/route-detail';
   static const routeFinder = '/route-finder';
   static const pickLocationOnMap = '/pick-location-on-map'; // Add this route
+  static const pickFavoritePlace = '/pick-favorite-place';
 
   // Directions
   static const directions = '/directions';
@@ -31,5 +32,4 @@ class AppRoutes {
 
   // Route Stops
   static const routeStops = '/route-stops';
-
 }

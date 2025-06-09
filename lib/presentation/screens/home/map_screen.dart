@@ -38,7 +38,6 @@ class MapScreen extends StatefulWidget {
 class _MapScreenState extends State<MapScreen>
     with AutomaticKeepAliveClientMixin {
   static const _canThoCenter = osm.LatLng(10.025817, 105.7470982);
-  /*static const _debounceDuration = Duration(milliseconds: 500);*/
 
   late final MapBloc _mapBloc;
   late final StopCubit _stopCubit;
@@ -51,35 +50,6 @@ class _MapScreenState extends State<MapScreen>
     _mapBloc = getIt<MapBloc>()..add(InitializeMap());
     _stopCubit = getIt<StopCubit>();
     _stopCubit.fetchAllStops();
-
-    /*_mapBloc.stream.listen((mapState) {
-      if (mapState is MapLoaded) {
-        if (_debounceTimer?.isActive ?? false) {
-          _debounceTimer?.cancel();
-        }
-        _debounceTimer = Timer(_debounceDuration, () {
-          if (mapState.visibleBounds != null) {
-            _stopCubit.fetchStopsByBounds(mapState.visibleBounds);
-          }
-        });
-
-        // Chỉ chọn stop và animate đến stop khi vừa mở màn hình và chỉ 1 lần
-        if (widget.selectedStopId != null && !_hasAnimatedToStop) {
-          final stopState = _stopCubit.state;
-          final stops = (stopState is StopLoaded) ? stopState.stops : <BusStop>[];
-          final selectedList = stops.where((s) => s.id == widget.selectedStopId).toList();
-          if (selectedList.isNotEmpty) {
-            _mapBloc.add(SelectBusStop(selectedList.first));
-            // Đánh dấu đã animate để không lặp lại
-            _hasAnimatedToStop = true;
-            // Gửi animateToStop cho BusMapWidget qua setState
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              setState(() {});
-            });
-          }
-        }
-      }
-    });*/
   }
 
   @override
@@ -107,9 +77,10 @@ class _MapScreenState extends State<MapScreen>
             builder: (ctx, mapState) {
               return BlocBuilder<StopCubit, StopState>(
                 builder: (ctx, stopState) {
-                  final stops = (stopState is StopLoaded)
-                      ? List<BusStop>.from(stopState.stops)
-                      : <BusStop>[];
+                  final stops =
+                      (stopState is StopLoaded)
+                          ? List<BusStop>.from(stopState.stops)
+                          : <BusStop>[];
 
                   // once stops are loaded, find and select the favorite stop
                   if (_initialAnimateStop == null &&
@@ -125,7 +96,7 @@ class _MapScreenState extends State<MapScreen>
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       setState(() {});
                     });
-                                    }
+                  }
 
                   final isLoading =
                       (mapState is MapLoading || mapState is MapInitial) ||
@@ -144,12 +115,12 @@ class _MapScreenState extends State<MapScreen>
                         isLoading: isLoading,
                         selectedStop: selectedStop,
                         userLocation: userLocation,
-                        onStopSelected: (stop) => _mapBloc.add(SelectBusStop(stop)),
+                        onStopSelected:
+                            (stop) => _mapBloc.add(SelectBusStop(stop)),
                         onClearSelectedStop:
                             () => _mapBloc.add(ClearSelectedBusStop()),
                         refreshStops: () {
                           if (mapState is MapLoaded) {
-                            /*_stopCubit.fetchStopsByBounds(mapState.visibleBounds);*/
                             _stopCubit.fetchAllStops();
                           }
                         },
@@ -160,7 +131,10 @@ class _MapScreenState extends State<MapScreen>
                         },
                         onDirections: () {
                           if (selectedStop != null) {
-                            context.go(AppRoutes.directions, extra: selectedStop);
+                            context.go(
+                              AppRoutes.directions,
+                              extra: selectedStop,
+                            );
                           } else {
                             context.showInfoSnackBar(
                               'selectStopToGetDirections',
@@ -171,7 +145,8 @@ class _MapScreenState extends State<MapScreen>
                           context.go(AppRoutes.routeStops, extra: stop);
                         },
                         onMapMoved:
-                            (bounds) => _mapBloc.add(UpdateVisibleBounds(bounds)),
+                            (bounds) =>
+                                _mapBloc.add(UpdateVisibleBounds(bounds)),
                         routePoints: widget.routePoints,
                         startLocation: widget.startLocation,
                         endLocation: widget.endLocation,
@@ -225,4 +200,3 @@ class _MapScreenState extends State<MapScreen>
   @override
   bool get wantKeepAlive => true;
 }
-

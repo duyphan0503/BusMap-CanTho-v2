@@ -3,31 +3,43 @@ import 'dart:convert';
 
 import 'package:busmapcantho/core/services/notification_snackbar_service.dart';
 import 'package:busmapcantho/core/services/places_service.dart';
-import 'package:busmapcantho/presentation/cubits/route_finder/route_finder_cubit.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nominatim_flutter/model/response/nominatim_response.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/di/injection.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../cubits/route_finder/route_finder_state.dart';
-import '../../routes/app_routes.dart';
-import '../../widgets/favorite_label_selector.dart';
+import '../routes/app_routes.dart';
 
-class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key});
+class CommonPlaceSearchScreen extends StatefulWidget {
+  final String? favoriteLabel;
+  final FutureOr<void> Function(NominatimResponse)? onPicked;
+  final PlaceScreenMode mode;
+  final Widget? favoriteLabelWidget;
+  final FutureOr<void> Function(NominatimResponse)? onSuggestionTap;
+  final FutureOr<void> Function(NominatimResponse)? onHistoryTap;
+
+  const CommonPlaceSearchScreen({
+    super.key,
+    this.favoriteLabel,
+    this.onPicked,
+    this.mode = PlaceScreenMode.routeFinder,
+    this.favoriteLabelWidget,
+    this.onSuggestionTap,
+    this.onHistoryTap,
+  });
 
   @override
-  State<SearchScreen> createState() => _SearchScreenState();
+  State<CommonPlaceSearchScreen> createState() =>
+      _CommonPlaceSearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen> {
-  static const _historyKey = 'search_history';
+enum PlaceScreenMode { routeFinder, pickFavoritePlace }
 
-  RouteFinderCubit get _routeFinderCubit => context.read<RouteFinderCubit>();
+class _CommonPlaceSearchScreenState extends State<CommonPlaceSearchScreen> {
+  static const _historyKey = 'search_history';
 
   final TextEditingController _controller = TextEditingController();
   final PlacesService _placesService = getIt<PlacesService>();
@@ -42,6 +54,14 @@ class _SearchScreenState extends State<SearchScreen> {
     super.initState();
     _loadHistory();
     _controller.addListener(_onQueryChanged);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onQueryChanged);
+    _controller.dispose();
+    _debounce?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadHistory() async {
@@ -129,40 +149,25 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Future<void> _onSuggestionTap(NominatimResponse place) async {
-    await _saveHistory(place);
-    final sel = _routeFinderCubit.state.selectionType;
-    final latLng = place.toLatLng;
-    if (sel == LocationSelectionType.start) {
-      _routeFinderCubit.setStart(name: place.displayName, latLng: latLng);
-    } else {
-      _routeFinderCubit.setEnd(name: place.displayName, latLng: latLng);
+    if (widget.onSuggestionTap != null) {
+      await widget.onSuggestionTap!(place);
+      return;
     }
-    _routeFinderCubit.resetSelection();
-    if (mounted) {
-      if (sel == LocationSelectionType.start ||
-          sel == LocationSelectionType.end) {
-        context.pop();
-      } else {
-        context.push(AppRoutes.routeFinder);
-      }
+    await _saveHistory(place);
+    if (widget.onPicked != null) {
+      await widget.onPicked!(place);
+      return;
     }
   }
 
-  void _onHistoryTap(NominatimResponse place) {
-    final sel = _routeFinderCubit.state.selectionType;
-    final latLng = place.toLatLng;
-    if (sel == LocationSelectionType.start) {
-      _routeFinderCubit.setStart(name: place.displayName, latLng: latLng);
-    } else {
-      _routeFinderCubit.setEnd(name: place.displayName, latLng: latLng);
+  Future<void> _onHistoryTap(NominatimResponse place) async {
+    if (widget.onHistoryTap != null) {
+      await widget.onHistoryTap!(place);
+      return;
     }
-    _routeFinderCubit.resetSelection();
-    if (mounted) {
-      if (sel != LocationSelectionType.none) {
-        context.pop();
-      } else {
-        context.push(AppRoutes.routeFinder);
-      }
+    if (widget.onPicked != null) {
+      await widget.onPicked!(place);
+      return;
     }
   }
 
@@ -194,7 +199,7 @@ class _SearchScreenState extends State<SearchScreen> {
       ),
       body: Column(
         children: [
-          FavoriteLabelSelector(),
+          if (widget.favoriteLabelWidget != null) widget.favoriteLabelWidget!,
           buildPickOnMapButton(),
           if (showHistory && _history.isNotEmpty)
             Padding(
@@ -305,8 +310,6 @@ class _SearchScreenState extends State<SearchScreen> {
 
   Widget buildPickOnMapButton() {
     final theme = Theme.of(context);
-    final selectionType = _routeFinderCubit.state.selectionType;
-
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: SizedBox(
@@ -334,13 +337,10 @@ class _SearchScreenState extends State<SearchScreen> {
           onPressed: () async {
             final result = await context.push<bool?>(
               AppRoutes.pickLocationOnMap,
+              extra: {'addToLabelMode': true, 'label': widget.favoriteLabel},
             );
-            if (mounted && result == true) {
-              if (selectionType != LocationSelectionType.none) {
-                context.pop();
-              } else {
-                context.go(AppRoutes.routeFinder);
-              }
+            if (result == true && mounted) {
+              Navigator.of(context).pop();
             }
           },
         ),

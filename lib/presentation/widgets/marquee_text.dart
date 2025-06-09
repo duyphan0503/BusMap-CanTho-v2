@@ -10,14 +10,14 @@ class MarqueeText extends StatefulWidget {
   final double gapWidth;
 
   const MarqueeText({
-    Key? key,
+    super.key,
     required this.text,
     this.style,
     this.velocity = 30.0,
     this.pauseBetweenLoops = const Duration(seconds: 2),
     this.initialDelay = const Duration(seconds: 1),
     this.gapWidth = 50.0, // Default gap between text repetitions
-  }) : super(key: key);
+  });
 
   @override
   State<MarqueeText> createState() => _MarqueeTextState();

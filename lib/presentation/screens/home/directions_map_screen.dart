@@ -12,17 +12,14 @@ import '../../blocs/map/map_state.dart';
 import '../../cubits/directions/directions_cubit.dart';
 import '../../routes/app_routes.dart';
 import '../../widgets/bus_map_widget.dart';
+import '../../widgets/custom_app_bar.dart';
 import '../../widgets/directions_bottom_sheet.dart';
 import '../../widgets/route_step_preview_overlay.dart';
-import '../../widgets/common/custom_app_bar.dart';
 
 class DirectionsMapScreen extends StatefulWidget {
   final BusStop stop;
 
-  const DirectionsMapScreen({
-    super.key,
-    required this.stop,
-  });
+  const DirectionsMapScreen({super.key, required this.stop});
 
   @override
   State<DirectionsMapScreen> createState() => _DirectionsMapScreenState();
@@ -40,7 +37,6 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
   // State for step preview
   bool _showStepPreview = false;
   int _currentStepIndex = 0;
-  Map<String, dynamic>? _currentStep;
 
   bool _hasFetchedDirections = false;
 
@@ -64,10 +60,7 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
       state.currentPosition.longitude,
     );
 
-    final stopLoc = osm.LatLng(
-      widget.stop.latitude,
-      widget.stop.longitude,
-    );
+    final stopLoc = osm.LatLng(widget.stop.latitude, widget.stop.longitude);
 
     _directionsCubit.getDirectionsForAllModes(userLoc, stopLoc);
   }
@@ -97,10 +90,7 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
         state.currentPosition.longitude,
       );
 
-      final stopLoc = osm.LatLng(
-        widget.stop.latitude,
-        widget.stop.longitude,
-      );
+      final stopLoc = osm.LatLng(widget.stop.latitude, widget.stop.longitude);
 
       _directionsCubit.changeTransportMode(mode, userLoc, stopLoc);
     }
@@ -109,10 +99,31 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
   void _onStepSelected(int stepIndex, List<Map<String, dynamic>> steps) {
     if (stepIndex < 0 || stepIndex >= steps.length) return;
 
+    // Ensure the step has all the necessary information
+    final selectedStep = Map<String, dynamic>.from(steps[stepIndex]);
+
+    // Make sure the step has proper location data to place the marker
+    if (selectedStep['location'] == null) {
+      // Try to estimate from maneuver location if available
+      if (selectedStep['maneuver_location'] != null) {
+        selectedStep['location'] = selectedStep['maneuver_location'];
+      }
+    }
+
+    // Make sure direction type information is preserved
+    if (selectedStep['icon_type'] == null &&
+        steps[stepIndex]['icon_type'] != null) {
+      selectedStep['icon_type'] = steps[stepIndex]['icon_type'];
+    }
+
+    if (selectedStep['icon_color'] == null &&
+        steps[stepIndex]['icon_color'] != null) {
+      selectedStep['icon_color'] = steps[stepIndex]['icon_color'];
+    }
+
     setState(() {
       _showStepPreview = true;
       _currentStepIndex = stepIndex;
-      _currentStep = steps[stepIndex];
     });
   }
 
@@ -127,7 +138,6 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
 
     setState(() {
       _currentStepIndex = stepIndex;
-      _currentStep = steps[stepIndex];
     });
   }
 
@@ -140,7 +150,8 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
         title: _showStepPreview ? widget.stop.name : 'directions'.tr(),
         leading: BackButton(
           onPressed: _clearAndExit,
-          color: theme.appBarTheme.iconTheme?.color ?? theme.colorScheme.onPrimary,
+          color:
+              theme.appBarTheme.iconTheme?.color ?? theme.colorScheme.onPrimary,
         ),
         actions: [],
         centerTitle: true,
@@ -150,11 +161,13 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
         bloc: _mapBloc,
         builder: (context, mapState) {
           final isLoading = mapState is! MapLoaded;
-          final userLoc = mapState is MapLoaded
-              ? osm.LatLng(mapState.currentPosition.latitude, mapState.currentPosition.longitude)
-              : _defaultCenter;
-
-          final stopLoc = osm.LatLng(widget.stop.latitude, widget.stop.longitude);
+          final userLoc =
+              mapState is MapLoaded
+                  ? osm.LatLng(
+                    mapState.currentPosition.latitude,
+                    mapState.currentPosition.longitude,
+                  )
+                  : _defaultCenter;
 
           return BlocBuilder<DirectionsCubit, DirectionsState>(
             bloc: _directionsCubit,
@@ -162,7 +175,7 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
               final durations = <String, String>{};
               final distances = <String, String>{};
               final cachedResults = _directionsCubit.getCachedResults();
-              for (var mode in ['car', 'walk', 'motorbike']) {
+              for (var mode in ['car', 'walk', 'bike']) {
                 if (cachedResults.containsKey(mode)) {
                   final result = cachedResults[mode]!;
                   durations[mode] = result.formattedDuration;
@@ -173,20 +186,27 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
                 }
               }
 
-              final List<Map<String, dynamic>> steps = directionsState is DirectionsLoaded
-                  ? (directionsState.steps ?? []).map((step) => Map<String, dynamic>.from(step)).toList()
-                  : [];
+              final List<Map<String, dynamic>> steps =
+                  directionsState is DirectionsLoaded
+                      ? (directionsState.steps ?? [])
+                          .map((step) => Map<String, dynamic>.from(step))
+                          .toList()
+                      : [];
 
-              Map<String, dynamic>? highlightedStep = _showStepPreview && steps.isNotEmpty && _currentStepIndex < steps.length
-                  ? steps[_currentStepIndex]
-                  : null;
+              Map<String, dynamic>? highlightedStep =
+                  _showStepPreview &&
+                          steps.isNotEmpty &&
+                          _currentStepIndex < steps.length
+                      ? steps[_currentStepIndex]
+                      : null;
 
               return Stack(
                 children: [
                   // Map with bus stops and routes
                   BusMapWidget(
                     busStops: [widget.stop],
-                    isLoading: isLoading || directionsState is DirectionsLoading,
+                    isLoading:
+                        isLoading || directionsState is DirectionsLoading,
                     selectedStop: widget.stop,
                     userLocation: userLoc,
                     onStopSelected: (stop) {
@@ -197,23 +217,29 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
                     onCenterUser: () {},
                     onDirections: () {},
                     onRoutes: (_) {},
-                    routePoints: directionsState is DirectionsLoaded
-                        ? directionsState.polylinePoints
-                        : [],
-                    distanceLabel: directionsState is DirectionsLoaded
-                        ? directionsState.formattedDistance
-                        : null,
-                    durationLabel: directionsState is DirectionsLoaded
-                        ? directionsState.formattedDuration
-                        : null,
+                    routePoints:
+                        directionsState is DirectionsLoaded
+                            ? directionsState.polylinePoints
+                            : [],
+                    distanceLabel:
+                        directionsState is DirectionsLoaded
+                            ? directionsState.formattedDistance
+                            : null,
+                    durationLabel:
+                        directionsState is DirectionsLoaded
+                            ? directionsState.formattedDuration
+                            : null,
                     transportMode: _selectedMode,
                     markerVisibilityZoomThreshold: 10.0,
                     highlightedStep: highlightedStep,
-                    onMapMoved: (bounds) => _mapBloc.add(UpdateVisibleBounds(bounds)),
+                    onMapMoved:
+                        (bounds) => _mapBloc.add(UpdateVisibleBounds(bounds)),
                   ),
 
                   // Display route step preview overlay at the top when active
-                  if (_showStepPreview && steps.isNotEmpty && _currentStepIndex < steps.length)
+                  if (_showStepPreview &&
+                      steps.isNotEmpty &&
+                      _currentStepIndex < steps.length)
                     Positioned(
                       top: 0,
                       left: 0,
@@ -224,12 +250,20 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
                           currentStepIndex: _currentStepIndex,
                           totalSteps: steps.length,
                           onClose: _closeStepPreview,
-                          onPrevStep: _currentStepIndex > 0
-                              ? () => _navigateToStep(_currentStepIndex - 1, steps)
-                              : null,
-                          onNextStep: _currentStepIndex < steps.length - 1
-                              ? () => _navigateToStep(_currentStepIndex + 1, steps)
-                              : null,
+                          onPrevStep:
+                              _currentStepIndex > 0
+                                  ? () => _navigateToStep(
+                                    _currentStepIndex - 1,
+                                    steps,
+                                  )
+                                  : null,
+                          onNextStep:
+                              _currentStepIndex < steps.length - 1
+                                  ? () => _navigateToStep(
+                                    _currentStepIndex + 1,
+                                    steps,
+                                  )
+                                  : null,
                         ),
                       ),
                     ),
@@ -244,12 +278,17 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
                           FloatingActionButton(
                             heroTag: 'prev_step',
                             mini: true,
-                            onPressed: _currentStepIndex > 0
-                                ? () => _navigateToStep(_currentStepIndex - 1, steps)
-                                : null,
-                            backgroundColor: _currentStepIndex > 0
-                                ? theme.colorScheme.primary
-                                : theme.disabledColor,
+                            onPressed:
+                                _currentStepIndex > 0
+                                    ? () => _navigateToStep(
+                                      _currentStepIndex - 1,
+                                      steps,
+                                    )
+                                    : null,
+                            backgroundColor:
+                                _currentStepIndex > 0
+                                    ? theme.colorScheme.primary
+                                    : theme.disabledColor,
                             foregroundColor: theme.colorScheme.onPrimary,
                             child: const Icon(Icons.arrow_back),
                           ),
@@ -257,12 +296,17 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
                           FloatingActionButton(
                             heroTag: 'next_step',
                             mini: true,
-                            onPressed: _currentStepIndex < steps.length - 1
-                                ? () => _navigateToStep(_currentStepIndex + 1, steps)
-                                : null,
-                            backgroundColor: _currentStepIndex < steps.length - 1
-                                ? theme.colorScheme.primary
-                                : theme.disabledColor,
+                            onPressed:
+                                _currentStepIndex < steps.length - 1
+                                    ? () => _navigateToStep(
+                                      _currentStepIndex + 1,
+                                      steps,
+                                    )
+                                    : null,
+                            backgroundColor:
+                                _currentStepIndex < steps.length - 1
+                                    ? theme.colorScheme.primary
+                                    : theme.disabledColor,
                             foregroundColor: theme.colorScheme.onPrimary,
                             child: const Icon(Icons.arrow_forward),
                           ),
@@ -272,13 +316,17 @@ class _DirectionsMapScreenState extends State<DirectionsMapScreen>
 
                   // Directions bottom sheet (only visible when not in preview mode)
                   if (directionsState is DirectionsLoaded && !_showStepPreview)
-                    DirectionsBottomSheet(
-                      steps: steps,
-                      durations: durations,
-                      distances: distances,
-                      selectedMode: _selectedMode,
-                      onModeChanged: _onModeChanged,
-                      onStepTap: (stepIndex) => _onStepSelected(stepIndex, steps),
+                    SizedBox(
+                      height: MediaQuery.of(context).size.height * 0.8,
+                      child: DirectionsBottomSheet(
+                        steps: steps,
+                        durations: durations,
+                        distances: distances,
+                        selectedMode: _selectedMode,
+                        onModeChanged: _onModeChanged,
+                        onStepTap:
+                            (stepIndex) => _onStepSelected(stepIndex, steps),
+                      ),
                     ),
 
                   // Error message display

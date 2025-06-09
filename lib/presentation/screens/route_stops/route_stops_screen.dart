@@ -1,3 +1,4 @@
+import 'package:busmapcantho/core/services/notification_local_service.dart';
 import 'package:busmapcantho/core/services/notification_snackbar_service.dart';
 import 'package:busmapcantho/core/theme/app_colors.dart';
 import 'package:busmapcantho/data/model/bus_location.dart';
@@ -12,9 +13,8 @@ import 'package:busmapcantho/presentation/widgets/route_card_widget.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:get_it/get_it.dart';
-import 'package:busmapcantho/core/services/notification_local_service.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../routes/app_routes.dart';
 
@@ -101,7 +101,7 @@ class _RouteStopsScreenState extends State<RouteStopsScreen>
 
             return Column(
               children: [
-                const SizedBox(height: _tabBarHeight + 40),
+                SizedBox(height: MediaQuery.of(context).padding.top + 16),
                 _RouteTabBar(controller: _tabController),
                 Expanded(
                   child: TabBarView(
@@ -329,11 +329,12 @@ class _MonitorButton extends StatelessWidget {
       context.showSuccessSnackBar(
         tr('monitorSuccessMessage', args: [labels[index]]),
       );
-      
+
       // Chỉ cập nhật thông báo bắt đầu theo dõi
       NotificationLocalService().showNotification(
         title: 'Bắt đầu theo dõi',
-        body: 'Đang theo dõi xe buýt tuyến ${routes.first.routeNumber}. Sẽ thông báo khi xe đến trạm ${stop.name} trong khoảng cách ${labels[index]}',
+        body:
+            'Đang theo dõi xe buýt tuyến ${routes.first.routeNumber}. Sẽ thông báo khi xe đến trạm ${stop.name} trong khoảng cách ${labels[index]}',
       );
     } catch (e) {
       context.showErrorSnackBar('Failed to set up monitoring: ${e.toString()}');
@@ -414,11 +415,12 @@ class _ReportButton extends StatelessWidget {
       context.showSuccessSnackBar(
         tr('reportSuccessMessage', args: [labels[index]]),
       );
-      
+
       // Add a notification to let the user know reporting has started
       NotificationLocalService().showNotification(
         title: 'Bắt đầu theo dõi thời gian',
-        body: 'Đang theo dõi xe buýt tuyến ${routes.first.routeNumber} sẽ đến trạm ${stop.name} trong ${labels[index]}',
+        body:
+            'Đang theo dõi xe buýt tuyến ${routes.first.routeNumber} sẽ đến trạm ${stop.name} trong ${labels[index]}',
       );
     } catch (e) {
       context.showErrorSnackBar('Failed to set up reporting: ${e.toString()}');

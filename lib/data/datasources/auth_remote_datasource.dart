@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:busmapcantho/configs/env.dart';
+import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:injectable/injectable.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -78,23 +79,35 @@ class AuthRemoteDatasource {
       clientId: iosClientId,
       serverClientId: webClientId,
     );
-    final googleUser = await googleSignIn.signIn();
-    if (googleUser == null) throw Exception('Google sign-in was cancelled');
-    final googleAuth = await googleUser.authentication;
-    final idToken = googleAuth.idToken;
-    final accessToken = googleAuth.accessToken;
-    if (idToken == null || accessToken == null) {
-      throw Exception('Failed to get Google authentication tokens');
+    try {
+      final googleUser = await googleSignIn.signIn();
+      if (googleUser == null) throw Exception('Google sign-in was cancelled');
+      final googleAuth = await googleUser.authentication;
+      final idToken = googleAuth.idToken;
+      final accessToken = googleAuth.accessToken;
+      if (idToken == null || accessToken == null) {
+        throw Exception('Failed to get Google authentication tokens');
+      }
+      final response = await _client.auth.signInWithIdToken(
+        provider: OAuthProvider.google,
+        idToken: idToken,
+        accessToken: accessToken,
+      );
+      if (response.user == null) {
+        throw Exception('Failed to sign in with Google - no user returned');
+      }
+      return response;
+    } on PlatformException {
+      throw Exception(
+        'Không thể đăng nhập bằng Google. Vui lòng kiểm tra cấu hình ứng dụng hoặc thử lại sau.',
+      );
+    } on AuthException catch (e) {
+      throw Exception(e.message);
+    } catch (e) {
+      throw Exception(
+        'Đã xảy ra lỗi khi đăng nhập bằng Google. Vui lòng thử lại.',
+      );
     }
-    final response = await _client.auth.signInWithIdToken(
-      provider: OAuthProvider.google,
-      idToken: idToken,
-      accessToken: accessToken,
-    );
-    if (response.user == null) {
-      throw Exception('Failed to sign in with Google - no user returned');
-    }
-    return response;
   }
 
   Future<void> signOut() async {
@@ -109,11 +122,8 @@ class AuthRemoteDatasource {
     final user = _client.auth.currentUser;
     if (user == null) throw Exception('No user is currently signed in');
 
-    final response = await _client
-        .from('users')
-        .select('*')
-        .eq('id', user.id)
-        .single();
+    final response =
+        await _client.from('users').select('*').eq('id', user.id).single();
 
     return response as Map<String, dynamic>?;
   }
@@ -246,5 +256,20 @@ class AuthRemoteDatasource {
       return res.session?.accessToken;
     }
     return session.accessToken;
+  }
+
+  Future<void> resendEmailOtp({
+    required String email,
+    bool isReset = false,
+  }) async {
+    try {
+      if (isReset) {
+        await _client.auth.resetPasswordForEmail(email);
+      } else {
+        await _client.auth.resend(type: OtpType.email, email: email);
+      }
+    } on AuthException catch (e) {
+      throw Exception(e.message);
+    }
   }
 }

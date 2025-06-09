@@ -9,17 +9,19 @@ class RouteStopRemoteDatasource {
   final SupabaseClient _client;
 
   RouteStopRemoteDatasource([SupabaseClient? client])
-      : _client = client ?? Supabase.instance.client;
+    : _client = client ?? Supabase.instance.client;
 
   Future<List<RouteStop>> getRouteStops(String routeId, int direction) async {
     try {
       final response = await _client
           .from('route_stops')
-          .select('id, route_id, stop_id, sequence, direction, created_at, updated_at, stop:stops(*)')
+          .select(
+            'id, route_id, stop_id, sequence, direction, created_at, updated_at, stop:stops(*)',
+          )
           .eq('route_id', routeId)
           .eq('direction', direction)
           .order('sequence');
-      
+
       return response.map((data) {
         final stop = BusStop.fromJson(data['stop']);
         return RouteStop.fromJson(data, stop);
@@ -35,7 +37,7 @@ class RouteStopRemoteDatasource {
           .from('route_stops')
           .select('route_id, direction')
           .eq('stop_id', stopId);
-      
+
       // Extract unique route IDs
       return response
           .map((data) => data['route_id'] as String)
@@ -47,17 +49,22 @@ class RouteStopRemoteDatasource {
   }
 
   // New method to get specific route-stop combination
-  Future<RouteStop?> getRouteStop(String routeId, String stopId, int direction) async {
+  Future<RouteStop?> getRouteStop(
+    String routeId,
+    String stopId,
+    int direction,
+  ) async {
     try {
-      final response = await _client
-          .from('route_stops')
-          .select('id, route_id, stop_id, sequence, direction, created_at, updated_at, stop:stops(*)')
-          .eq('route_id', routeId)
-          .eq('stop_id', stopId)
-          .eq('direction', direction)
-          .single();
-
-      if (response == null) return null;
+      final response =
+          await _client
+              .from('route_stops')
+              .select(
+                'id, route_id, stop_id, sequence, direction, created_at, updated_at, stop:stops(*)',
+              )
+              .eq('route_id', routeId)
+              .eq('stop_id', stopId)
+              .eq('direction', direction)
+              .single();
 
       final stop = BusStop.fromJson(response['stop']);
       return RouteStop.fromJson(response, stop);

@@ -38,4 +38,6 @@ abstract class AuthRepository {
   });
 
   Future<String?> getStoredToken();
+
+  Future<void> resendEmailOtp({required String email, bool isReset});
 }
