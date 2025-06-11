@@ -154,9 +154,7 @@ class _DirectionsBottomSheetState extends State<DirectionsBottomSheet>
                     ),
                     const SizedBox(width: 12),
                     Text(
-                      _isPanelExpanded
-                          ? 'directions_to'.tr()
-                          : _modes[_tabController.index].label,
+                      _modes[_tabController.index].label,
                       style: theme.textTheme.titleLarge?.copyWith(
                         color: AppColors.primaryMedium,
                         fontWeight: FontWeight.w600,

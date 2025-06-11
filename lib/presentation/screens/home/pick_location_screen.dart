@@ -65,7 +65,7 @@ class _PickLocationScreenState extends State<PickLocationScreen> {
       );
       if (mounted && address != null) {
         setState(() {
-          _centerAddress = address.placeName;
+          _centerAddress = address.displayName ?? address.placeName;
         });
       } else if (mounted) {
         setState(() {
@@ -85,7 +85,7 @@ class _PickLocationScreenState extends State<PickLocationScreen> {
     if (hasGesture) {
       _currentMapCenter = center;
       _addressDebounce?.cancel();
-      _addressDebounce = Timer(const Duration(milliseconds: 700), () {
+      _addressDebounce = Timer(const Duration(milliseconds: 500), () {
         if (mounted && _currentMapCenter != null) {
           _fetchAddressForCoordinates(_currentMapCenter!);
         }
