@@ -12,6 +12,7 @@ import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as osm;
+import 'package:lottie/lottie.dart' as lottie;
 
 import '../routes/app_routes.dart';
 import '../screens/bus_routes/route_detail_map_screen.dart';
@@ -419,13 +420,21 @@ class BusLocationMarkerLayer extends StatelessWidget {
           busLocations
               .map(
                 (bus) => Marker(
-                  width: 48,
-                  height: 48,
+                  width: 80,
+                  height: 80,
                   point: osm.LatLng(bus.lat, bus.lng),
-                  child: Image.asset(
-                    Assets.images.bus.path,
-                    width: 48,
-                    height: 48,
+                  alignment: Alignment.topCenter,
+                  child: Align(
+                    alignment: Alignment.bottomCenter,
+                    child: Transform.rotate(
+                      angle: (bus.bearing - 90) * osm.pi / 180,
+                      alignment: Alignment.center,
+                      child: lottie.Lottie.asset(
+                        Assets.animations.busAnimation,
+                        width: 48,
+                        height: 48,
+                      ),
+                    ),
                   ),
                 ),
               )
@@ -746,3 +755,4 @@ class StopInfoCard extends StatelessWidget {
     );
   }
 }
+

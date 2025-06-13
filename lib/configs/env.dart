@@ -2,6 +2,8 @@ const String baseUrl = "https://phlgffhfgkbzzqcsxxuv.supabase.co";
 const String apiKey =
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBobGdmZmhmZ2tienpxY3N4eHV2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1Mjg1MjksImV4cCI6MjA2MTEwNDUyOX0.OgCsuYUIu10tpJpURck0Ha3aWP1sGjWYaezltY4JJiQ";
 const String authUrl = "$baseUrl/auth/v1";
+const String serviceRoleKey =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBobGdmZmhmZ2tienpxY3N4eHV2Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NTUyODUyOSwiZXhwIjoyMDYxMTA0NTI5fQ.B7LFFvlKM3ClG_TmDgYvX9WUNZFlHF6-CNB9kuvCWgg";
 
 // Client ID for Google OAuth
 const String webClientId =

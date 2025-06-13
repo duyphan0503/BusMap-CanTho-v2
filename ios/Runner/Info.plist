@@ -58,14 +58,10 @@
 				<string>Editor</string>
 				<key>CFBundleURLSchemes</key>
 				<array>
-					<string>com.googleusercontent.apps.809736660329-3rf07tbpikks6d72ci25145rojqodjtl</string>
+					<string>809736660329-c7kjcecvkkcds9ugmprtrff6rpb0t723.apps.googleusercontent.com</string>
 				</array>
 			</dict>
 		</array>
-		<key>FacebookAppID</key>
-		<string>{your-app-id}</string>
-		<key>FacebookDisplayName</key>
-		<string>{your-app-name}</string>
 		<key>UIStatusBarHidden</key>
 		<false/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
