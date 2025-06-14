@@ -11,7 +11,9 @@ class RouteFinderCubit extends Cubit<RouteFinderState> {
     if (userLocation != null && state.startLatLng == null && state.startName == null) {
       emit(state.copyWith(
         startLatLng: userLocation,
-        startName: translatedName
+        startName: translatedName,
+        startInputError: false, // Clear error on new input
+        endInputError: false,
       ));
       _drawLineIfReady();
     }
@@ -28,6 +30,8 @@ class RouteFinderCubit extends Cubit<RouteFinderState> {
         startName: name,
         startLatLng: latLng,
         selectionType: LocationSelectionType.none,
+        startInputError: false, // Clear error on new input
+        endInputError: (name == null || name.isEmpty) && (latLng == null) ? state.endInputError : false,
       ),
     );
     _drawLineIfReady();
@@ -39,48 +43,74 @@ class RouteFinderCubit extends Cubit<RouteFinderState> {
         endName: name,
         endLatLng: latLng,
         selectionType: LocationSelectionType.none,
+        endInputError: false, // Clear error on new input
+        startInputError: (name == null || name.isEmpty) && (latLng == null) ? state.startInputError : false,
       ),
     );
     _drawLineIfReady();
   }
 
   void swap() {
-    emit(
-      state.copyWith(
-        startName: state.endName,
-        startLatLng: state.endLatLng,
-        endName: state.startName,
-        endLatLng: state.startLatLng,
-      ),
-    );
-    _drawLineIfReady();
+    bool canSwap = true;
+    bool newStartError = false;
+    bool newEndError = false;
+
+    if (state.startName == null || state.startName!.isEmpty && state.startLatLng == null) {
+      canSwap = false;
+      newStartError = true;
+    }
+    if (state.endName == null || state.endName!.isEmpty && state.endLatLng == null) {
+      canSwap = false;
+      newEndError = true;
+    }
+
+    if (canSwap) {
+      emit(
+        state.copyWith(
+          startName: state.endName,
+          startLatLng: state.endLatLng,
+          endName: state.startName,
+          endLatLng: state.startLatLng,
+          startInputError: false, // Clear errors on successful swap
+          endInputError: false,
+        ),
+      );
+      _drawLineIfReady();
+    } else {
+      emit(state.copyWith(startInputError: newStartError, endInputError: newEndError));
+      // Optionally, clear errors after a short delay
+      Future.delayed(const Duration(milliseconds: 1500), () {
+        if (state.startInputError || state.endInputError) { // Check if errors are still present
+            emit(state.copyWith(startInputError: false, endInputError: false));
+        }
+      });
+    }
   }
 
   // Set selection type to start when selecting start location
   void selectingStart() {
-    emit(state.copyWith(selectionType: LocationSelectionType.start));
+    emit(state.copyWith(selectionType: LocationSelectionType.start, startInputError: false, endInputError: false));
   }
 
   // Set selection type to end when selecting end location
   void selectingEnd() {
-    emit(state.copyWith(selectionType: LocationSelectionType.end));
+    emit(state.copyWith(selectionType: LocationSelectionType.end, startInputError: false, endInputError: false));
   }
 
   // Reset selection type
   void resetSelection() {
-    emit(state.copyWith(selectionType: LocationSelectionType.none));
+    emit(state.copyWith(selectionType: LocationSelectionType.none, startInputError: false, endInputError: false));
   }
 
   void _drawLineIfReady() {
     if (state.startLatLng != null && state.endLatLng != null) {
       emit(state.copyWith(routeLine: [state.startLatLng!, state.endLatLng!]));
-    } else if (state.startName != null && state.endName != null) {
+    } else {
+      // Keep existing partial line logic or clear if preferred
       final List<LatLng> partialLine = [];
       if (state.startLatLng != null) partialLine.add(state.startLatLng!);
       if (state.endLatLng != null) partialLine.add(state.endLatLng!);
       emit(state.copyWith(routeLine: partialLine));
-    } else {
-      emit(state.copyWith(routeLine: []));
     }
   }
 }

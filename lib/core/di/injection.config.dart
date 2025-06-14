@@ -163,6 +163,8 @@ import 'package:busmapcantho/presentation/cubits/route_finder/route_finder_cubit
     as _i767;
 import 'package:busmapcantho/presentation/cubits/route_stops/route_stops_cubit.dart'
     as _i655;
+import 'package:busmapcantho/presentation/cubits/route_suggestion/route_suggestion_cubit.dart'
+    as _i641;
 import 'package:busmapcantho/presentation/cubits/search/search_cubit.dart'
     as _i907;
 import 'package:get_it/get_it.dart' as _i174;
@@ -177,50 +179,50 @@ extension GetItInjectableX on _i174.GetIt {
     _i526.EnvironmentFilter? environmentFilter,
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
-    final loggerModule = _$LoggerModule();
     final notificationModule = _$NotificationModule();
+    final loggerModule = _$LoggerModule();
     final registerModule = _$RegisterModule();
     gh.factory<_i1030.OsrmService>(() => _i1030.OsrmService());
     gh.factory<_i875.PlacesService>(() => _i875.PlacesService());
     gh.factory<_i255.MapBloc>(() => _i255.MapBloc());
     gh.factory<_i767.RouteFinderCubit>(() => _i767.RouteFinderCubit());
-    gh.lazySingleton<_i974.Logger>(() => loggerModule.logger);
     gh.lazySingleton<_i67.NotificationLocalService>(
       () => notificationModule.notificationLocalService,
     );
+    gh.lazySingleton<_i974.Logger>(() => loggerModule.logger);
     gh.lazySingleton<_i454.SupabaseClient>(() => registerModule.supabaseClient);
-    gh.lazySingleton<_i848.AgencyRemoteDatasource>(
-      () => _i848.AgencyRemoteDatasource(gh<_i454.SupabaseClient>()),
+    gh.lazySingleton<_i649.SearchHistoryRemoteDatasource>(
+      () => _i649.SearchHistoryRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i1019.AuthRemoteDatasource>(
       () => _i1019.AuthRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
-    gh.lazySingleton<_i662.BusLocationRemoteDatasource>(
-      () => _i662.BusLocationRemoteDatasource(gh<_i454.SupabaseClient>()),
+    gh.lazySingleton<_i761.UserFavoriteRemoteDatasource>(
+      () => _i761.UserFavoriteRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i628.BusRouteRemoteDatasource>(
       () => _i628.BusRouteRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
-    gh.lazySingleton<_i257.BusStopRemoteDatasource>(
-      () => _i257.BusStopRemoteDatasource(gh<_i454.SupabaseClient>()),
+    gh.lazySingleton<_i662.BusLocationRemoteDatasource>(
+      () => _i662.BusLocationRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i502.FeedbackRemoteDatasource>(
       () => _i502.FeedbackRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
-    gh.lazySingleton<_i962.NotificationRemoteDatasource>(
-      () => _i962.NotificationRemoteDatasource(gh<_i454.SupabaseClient>()),
-    );
     gh.lazySingleton<_i68.RouteStopRemoteDatasource>(
       () => _i68.RouteStopRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
-    gh.lazySingleton<_i649.SearchHistoryRemoteDatasource>(
-      () => _i649.SearchHistoryRemoteDatasource(gh<_i454.SupabaseClient>()),
+    gh.lazySingleton<_i962.NotificationRemoteDatasource>(
+      () => _i962.NotificationRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i366.TicketRemoteDatasource>(
       () => _i366.TicketRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
-    gh.lazySingleton<_i761.UserFavoriteRemoteDatasource>(
-      () => _i761.UserFavoriteRemoteDatasource(gh<_i454.SupabaseClient>()),
+    gh.lazySingleton<_i257.BusStopRemoteDatasource>(
+      () => _i257.BusStopRemoteDatasource(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i848.AgencyRemoteDatasource>(
+      () => _i848.AgencyRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i290.BusRealtimeService>(
       () => _i290.BusRealtimeService(gh<_i454.SupabaseClient>()),
@@ -232,9 +234,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i335.UserFavoriteRepository(
         gh<_i761.UserFavoriteRemoteDatasource>(),
       ),
-    );
-    gh.factory<_i60.GetBusStopByIdUseCase>(
-      () => _i60.GetBusStopByIdUseCase(gh<_i16.BusStopRepository>()),
     );
     gh.lazySingleton<_i287.NotificationRepository>(
       () => _i590.NotificationRepositoryImpl(
@@ -266,28 +265,31 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i649.SearchHistoryRemoteDatasource>(),
       ),
     );
+    gh.factory<_i60.GetBusStopByIdUseCase>(
+      () => _i60.GetBusStopByIdUseCase(gh<_i16.BusStopRepository>()),
+    );
     gh.factory<_i950.GetAllBusStopsUseCase>(
       () => _i950.GetAllBusStopsUseCase(gh<_i16.BusStopRepository>()),
     );
+    gh.factory<_i706.GetRouteStopsUseCase>(
+      () => _i706.GetRouteStopsUseCase(gh<_i730.RouteStopsRepository>()),
+    );
+    gh.factory<_i770.GetStopSequenceUseCase>(
+      () => _i770.GetStopSequenceUseCase(gh<_i730.RouteStopsRepository>()),
+    );
+    gh.factory<_i661.GetRouteStopUseCase>(
+      () => _i661.GetRouteStopUseCase(gh<_i730.RouteStopsRepository>()),
+    );
     gh.factory<_i32.GetRoutesForStopUseCase>(
       () => _i32.GetRoutesForStopUseCase(gh<_i730.RouteStopsRepository>()),
+    );
+    gh.factory<_i119.IsStopOnRouteUseCase>(
+      () => _i119.IsStopOnRouteUseCase(gh<_i730.RouteStopsRepository>()),
     );
     gh.factory<_i167.GetRouteStopsAsBusStopsUseCase>(
       () => _i167.GetRouteStopsAsBusStopsUseCase(
         gh<_i730.RouteStopsRepository>(),
       ),
-    );
-    gh.factory<_i706.GetRouteStopsUseCase>(
-      () => _i706.GetRouteStopsUseCase(gh<_i730.RouteStopsRepository>()),
-    );
-    gh.factory<_i661.GetRouteStopUseCase>(
-      () => _i661.GetRouteStopUseCase(gh<_i730.RouteStopsRepository>()),
-    );
-    gh.factory<_i770.GetStopSequenceUseCase>(
-      () => _i770.GetStopSequenceUseCase(gh<_i730.RouteStopsRepository>()),
-    );
-    gh.factory<_i119.IsStopOnRouteUseCase>(
-      () => _i119.IsStopOnRouteUseCase(gh<_i730.RouteStopsRepository>()),
     );
     gh.factory<_i753.GetNearbyBusStopsUseCase>(
       () => _i753.GetNearbyBusStopsUseCase(gh<_i16.BusStopRepository>()),
@@ -322,17 +324,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i111.SearchBusRoutesUseCase>(
       () => _i111.SearchBusRoutesUseCase(gh<_i705.BusRouteRepository>()),
     );
-    gh.factory<_i1.AddFavoriteRouteUseCase>(
-      () => _i1.AddFavoriteRouteUseCase(gh<_i335.UserFavoriteRepository>()),
-    );
     gh.factory<_i628.AddFavoriteStopUseCase>(
       () => _i628.AddFavoriteStopUseCase(gh<_i335.UserFavoriteRepository>()),
     );
-    gh.factory<_i774.GetFavoriteRoutesUseCase>(
-      () => _i774.GetFavoriteRoutesUseCase(gh<_i335.UserFavoriteRepository>()),
-    );
     gh.factory<_i302.GetFavoriteStopsUseCase>(
       () => _i302.GetFavoriteStopsUseCase(gh<_i335.UserFavoriteRepository>()),
+    );
+    gh.factory<_i1.AddFavoriteRouteUseCase>(
+      () => _i1.AddFavoriteRouteUseCase(gh<_i335.UserFavoriteRepository>()),
+    );
+    gh.factory<_i774.GetFavoriteRoutesUseCase>(
+      () => _i774.GetFavoriteRoutesUseCase(gh<_i335.UserFavoriteRepository>()),
     );
     gh.factory<_i1049.GetAllBusRoutesUseCase>(
       () => _i1049.GetAllBusRoutesUseCase(gh<_i705.BusRouteRepository>()),
@@ -388,11 +390,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i994.UpdateFeedbackUseCase>(
       () => _i994.UpdateFeedbackUseCase(gh<_i566.FeedbackRepository>()),
     );
-    gh.factory<_i40.GetCurrentUserFeedbackForRouteUseCase>(
-      () => _i40.GetCurrentUserFeedbackForRouteUseCase(
-        gh<_i566.FeedbackRepository>(),
-      ),
-    );
     gh.factory<_i685.GetFeedbacksByRouteExcludingCurrentUserUseCase>(
       () => _i685.GetFeedbacksByRouteExcludingCurrentUserUseCase(
         gh<_i566.FeedbackRepository>(),
@@ -401,38 +398,51 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i3.SendFeedbackUseCase>(
       () => _i3.SendFeedbackUseCase(gh<_i566.FeedbackRepository>()),
     );
-    gh.factory<_i666.ChangePasswordUseCase>(
-      () => _i666.ChangePasswordUseCase(gh<_i556.AuthRepository>()),
-    );
-    gh.factory<_i264.GetCurrentUserUseCase>(
-      () => _i264.GetCurrentUserUseCase(gh<_i556.AuthRepository>()),
-    );
-    gh.factory<_i686.GoogleSignInNativeUseCase>(
-      () => _i686.GoogleSignInNativeUseCase(gh<_i556.AuthRepository>()),
-    );
-    gh.factory<_i405.RequestPasswordResetOtpUseCase>(
-      () => _i405.RequestPasswordResetOtpUseCase(gh<_i556.AuthRepository>()),
-    );
-    gh.factory<_i81.ResetPasswordWithOtpUseCase>(
-      () => _i81.ResetPasswordWithOtpUseCase(gh<_i556.AuthRepository>()),
-    );
-    gh.factory<_i995.SignInUseCase>(
-      () => _i995.SignInUseCase(gh<_i556.AuthRepository>()),
-    );
-    gh.factory<_i284.SignOutUseCase>(
-      () => _i284.SignOutUseCase(gh<_i556.AuthRepository>()),
+    gh.factory<_i40.GetCurrentUserFeedbackForRouteUseCase>(
+      () => _i40.GetCurrentUserFeedbackForRouteUseCase(
+        gh<_i566.FeedbackRepository>(),
+      ),
     );
     gh.factory<_i421.SignUpUseCase>(
       () => _i421.SignUpUseCase(gh<_i556.AuthRepository>()),
     );
+    gh.factory<_i405.RequestPasswordResetOtpUseCase>(
+      () => _i405.RequestPasswordResetOtpUseCase(gh<_i556.AuthRepository>()),
+    );
     gh.factory<_i346.UpdateDisplayNameUseCase>(
       () => _i346.UpdateDisplayNameUseCase(gh<_i556.AuthRepository>()),
+    );
+    gh.factory<_i725.VerifyEmailOtpUseCase>(
+      () => _i725.VerifyEmailOtpUseCase(gh<_i556.AuthRepository>()),
+    );
+    gh.factory<_i264.GetCurrentUserUseCase>(
+      () => _i264.GetCurrentUserUseCase(gh<_i556.AuthRepository>()),
+    );
+    gh.factory<_i666.ChangePasswordUseCase>(
+      () => _i666.ChangePasswordUseCase(gh<_i556.AuthRepository>()),
+    );
+    gh.factory<_i995.SignInUseCase>(
+      () => _i995.SignInUseCase(gh<_i556.AuthRepository>()),
+    );
+    gh.factory<_i81.ResetPasswordWithOtpUseCase>(
+      () => _i81.ResetPasswordWithOtpUseCase(gh<_i556.AuthRepository>()),
     );
     gh.factory<_i1067.UpdateProfileImageUseCase>(
       () => _i1067.UpdateProfileImageUseCase(gh<_i556.AuthRepository>()),
     );
-    gh.factory<_i725.VerifyEmailOtpUseCase>(
-      () => _i725.VerifyEmailOtpUseCase(gh<_i556.AuthRepository>()),
+    gh.factory<_i284.SignOutUseCase>(
+      () => _i284.SignOutUseCase(gh<_i556.AuthRepository>()),
+    );
+    gh.factory<_i686.GoogleSignInNativeUseCase>(
+      () => _i686.GoogleSignInNativeUseCase(gh<_i556.AuthRepository>()),
+    );
+    gh.factory<_i641.RouteSuggestionCubit>(
+      () => _i641.RouteSuggestionCubit(
+        gh<_i1049.GetAllBusRoutesUseCase>(),
+        gh<_i290.BusRealtimeService>(),
+        gh<_i753.GetNearbyBusStopsUseCase>(),
+        gh<_i167.GetRouteStopsAsBusStopsUseCase>(),
+      ),
     );
     gh.factory<_i129.NotificationCubit>(
       () => _i129.NotificationCubit(
@@ -494,8 +504,8 @@ extension GetItInjectableX on _i174.GetIt {
   }
 }
 
-class _$LoggerModule extends _i876.LoggerModule {}
-
 class _$NotificationModule extends _i673.NotificationModule {}
+
+class _$LoggerModule extends _i876.LoggerModule {}
 
 class _$RegisterModule extends _i1057.RegisterModule {}

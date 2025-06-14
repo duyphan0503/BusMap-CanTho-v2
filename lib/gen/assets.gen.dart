@@ -12,14 +12,14 @@ import 'package:flutter/widgets.dart';
 class $AssetsAnimationsGen {
   const $AssetsAnimationsGen();
 
-  /// File path: assets/animations/bus.gif
-  AssetGenImage get bus => const AssetGenImage('assets/animations/bus.gif');
-
   /// File path: assets/animations/bus_animation.json
   String get busAnimation => 'assets/animations/bus_animation.json';
 
+  /// File path: assets/animations/bus_not_found.json
+  String get busNotFound => 'assets/animations/bus_not_found.json';
+
   /// List of all assets
-  List<dynamic> get values => [bus, busAnimation];
+  List<String> get values => [busAnimation, busNotFound];
 }
 
 class $AssetsImagesGen {

@@ -14,6 +14,8 @@ class RouteFinderState extends Equatable {
   final LatLng? endLatLng;
   final List<LatLng> routeLine;
   final LocationSelectionType selectionType;
+  final bool startInputError; // Added for swap error indication
+  final bool endInputError;   // Added for swap error indication
 
   const RouteFinderState({
     this.startName,
@@ -22,6 +24,8 @@ class RouteFinderState extends Equatable {
     this.endLatLng,
     this.routeLine = const [],
     this.selectionType = LocationSelectionType.none,
+    this.startInputError = false, // Default to false
+    this.endInputError = false,   // Default to false
   });
 
   factory RouteFinderState.initial() => const RouteFinderState();
@@ -33,6 +37,8 @@ class RouteFinderState extends Equatable {
     LatLng? endLatLng,
     List<LatLng>? routeLine,
     LocationSelectionType? selectionType,
+    bool? startInputError,
+    bool? endInputError,
   }) {
     return RouteFinderState(
       startName: startName ?? this.startName,
@@ -41,16 +47,20 @@ class RouteFinderState extends Equatable {
       endLatLng: endLatLng ?? this.endLatLng,
       routeLine: routeLine ?? this.routeLine,
       selectionType: selectionType ?? this.selectionType,
+      startInputError: startInputError ?? this.startInputError,
+      endInputError: endInputError ?? this.endInputError,
     );
   }
 
   @override
   List<Object?> get props => [
-    startName,
-    startLatLng,
-    endName,
-    endLatLng,
-    routeLine,
-    selectionType,
-  ];
+        startName,
+        startLatLng,
+        endName,
+        endLatLng,
+        routeLine,
+        selectionType,
+        startInputError,
+        endInputError,
+      ];
 }

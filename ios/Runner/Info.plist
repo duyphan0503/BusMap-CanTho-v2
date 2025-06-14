@@ -66,5 +66,11 @@
 		<false/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<key>NSLocationWhenInUseUsageDescription</key>
+        <string>This app needs access to your location to show nearby bus stops.</string>
+        <key>NSLocationAlwaysUsageDescription</key>
+        <string>This app needs access to your location even when the app is in the background.</string>
+        <key>NSUserNotificationUsageDescription</key>
+        <string>This app needs permission to send you notifications about bus schedules and updates.</string>
 	</dict>
 </plist>

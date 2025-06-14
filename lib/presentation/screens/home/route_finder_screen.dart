@@ -147,7 +147,6 @@ class _RouteFinderViewState extends State<_RouteFinderView> {
           centerTitle: true,
           leading: IconButton(
             onPressed: () => context.go(AppRoutes.home),
-            // Or context.pop() if appropriate
             icon: const Icon(Icons.arrow_back, color: Colors.white),
           ),
         ),
@@ -293,20 +292,31 @@ class _RouteFinderViewState extends State<_RouteFinderView> {
   }
 
   Widget _buildActionButtons() {
-    return SizedBox(
-      width: double.infinity,
-      child: ElevatedButton(
-        onPressed: () {},
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          textStyle: Theme.of(
-            context,
-          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        child: Text('findWay'.tr()),
-      ),
+    return BlocBuilder<RouteFinderCubit, RouteFinderState>(
+      builder: (context, state) {
+        final canFindRoute =
+            state.startLatLng != null && state.endLatLng != null;
+        return SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed:
+                canFindRoute
+                    ? () {
+                      context.push(AppRoutes.routeSuggestion);
+                    }
+                    : null,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primary,
+              foregroundColor: Theme.of(context).colorScheme.onPrimary,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              textStyle: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            child: Text('findWay'.tr()),
+          ),
+        );
+      },
     );
   }
 

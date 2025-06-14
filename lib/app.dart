@@ -14,6 +14,7 @@ import 'package:busmapcantho/presentation/cubits/otp/otp_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/password/password_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/route_finder/route_finder_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/route_stops/route_stops_cubit.dart';
+import 'package:busmapcantho/presentation/cubits/route_suggestion/route_suggestion_cubit.dart';
 import 'package:busmapcantho/presentation/routes/app_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -95,6 +96,9 @@ class _BusMapCanThoAppState extends State<BusMapCanThoApp> {
         BlocProvider<RouteStopsCubit>(create: (_) => getIt<RouteStopsCubit>()),
         BlocProvider<RouteFinderCubit>(
           create: (_) => getIt<RouteFinderCubit>(),
+        ),
+        BlocProvider<RouteSuggestionCubit>(
+          create: (_) => getIt<RouteSuggestionCubit>(),
         ),
       ],
       child: MaterialApp.router(

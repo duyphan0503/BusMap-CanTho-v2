@@ -1,10 +1,13 @@
+import 'package:busmapcantho/presentation/cubits/route_suggestion/route_suggestion_cubit.dart';
 import 'package:busmapcantho/presentation/screens/auth/otp_verification_screen.dart';
 import 'package:busmapcantho/presentation/screens/home/directions_map_screen.dart';
 import 'package:busmapcantho/presentation/screens/home/pick_favorite_place_screen.dart';
+import 'package:busmapcantho/presentation/screens/home/route_detail_screen.dart';
 import 'package:busmapcantho/presentation/screens/notifications/notifications_screen.dart';
 import 'package:busmapcantho/presentation/screens/route_stops/route_stops_screen.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 
@@ -23,6 +26,7 @@ import '../screens/home/home_screen.dart';
 import '../screens/home/map_screen.dart';
 import '../screens/home/pick_location_screen.dart';
 import '../screens/home/route_finder_screen.dart';
+import '../screens/home/route_suggestion_screen.dart';
 import '../screens/home/search_screen.dart';
 import '../screens/splash_screen.dart';
 import 'app_routes.dart';
@@ -123,6 +127,18 @@ class AppRouter {
         builder:
             (context, state) =>
                 PickFavoritePlaceScreen(label: state.extra as String),
+      ),
+      GoRoute(
+        path: AppRoutes.routeSuggestion,
+        builder: (context, state) {
+          return const RouteSuggestionScreen();
+        },
+      ),
+      GoRoute(
+        path: AppRoutes.routeSuggestionDetail,
+        builder: (context, state) {
+          return const RouteDetailScreen();
+        },
       ),
       ShellRoute(
         navigatorKey: _shellNavigatorKey,
