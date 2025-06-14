@@ -248,6 +248,29 @@ class _RouteSuggestionView extends StatelessWidget {
         // Tìm startStop và endStop, đảm bảo trả về BusStop (không phải BusStop?)
         final startStop = stops.firstWhere((s) => s.name == startStopName);
         final endStop = stops.firstWhere((s) => s.name == endStopName);
+
+        // Lấy vị trí đầu và cuối từ state
+        final suggestionState =
+            BlocProvider.of<RouteSuggestionCubit>(context).state;
+        final startLatLng = suggestionState.startLatLng;
+        final endLatLng = suggestionState.endLatLng;
+
+        // Lấy danh sách các trạm đi qua từ startStop đến endStop (bao gồm cả hai)
+        final startIdx = stops.indexWhere((s) => s.id == startStop.id);
+        final endIdx = stops.indexWhere((s) => s.id == endStop.id);
+        List<Map<String, dynamic>> stopsPassingBy = [];
+        if (startIdx != -1 && endIdx != -1 && startIdx <= endIdx) {
+          for (int i = startIdx; i <= endIdx; i++) {
+            final s = stops[i];
+            stopsPassingBy.add({
+              'name': s.name,
+              'latitude': s.latitude,
+              'longitude': s.longitude,
+              'isBusStop': true,
+            });
+          }
+        }
+
         context.push(
           AppRoutes.routeSuggestionDetail,
           extra: {
@@ -258,6 +281,11 @@ class _RouteSuggestionView extends StatelessWidget {
             'busDistance': busDistance,
             'fare': fare,
             'totalTime': totalTime,
+            'stopsPassingBy': stopsPassingBy,
+            'startName': suggestionState.startName,
+            'endName': suggestionState.endName,
+            'startLatLng': startLatLng,
+            'endLatLng': endLatLng,
           },
         );
       },

@@ -1,14 +1,11 @@
-import 'package:busmapcantho/presentation/cubits/route_suggestion/route_suggestion_cubit.dart';
 import 'package:busmapcantho/presentation/screens/auth/otp_verification_screen.dart';
 import 'package:busmapcantho/presentation/screens/home/directions_map_screen.dart';
-import 'package:busmapcantho/presentation/screens/home/pick_favorite_place_screen.dart';
-import 'package:busmapcantho/presentation/screens/home/route_detail_screen.dart';
 import 'package:busmapcantho/presentation/screens/notifications/notifications_screen.dart';
 import 'package:busmapcantho/presentation/screens/route_stops/route_stops_screen.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:salomon_bottom_bar/salomon_bottom_bar.dart';
 
 import '../../core/theme/app_colors.dart';
@@ -24,8 +21,10 @@ import '../screens/bus_stops/nearby_stops_screen.dart';
 import '../screens/favorite/favorites_screen.dart';
 import '../screens/home/home_screen.dart';
 import '../screens/home/map_screen.dart';
+import '../screens/home/pick_favorite_place_screen.dart';
 import '../screens/home/pick_location_screen.dart';
 import '../screens/home/route_finder_screen.dart';
+import '../screens/home/route_suggestion_detail_screen.dart';
 import '../screens/home/route_suggestion_screen.dart';
 import '../screens/home/search_screen.dart';
 import '../screens/splash_screen.dart';
@@ -137,7 +136,22 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.routeSuggestionDetail,
         builder: (context, state) {
-          return const RouteDetailScreen();
+          final extra = state.extra as Map<String, dynamic>;
+          final busRoute = extra['route'] as BusRoute;
+          final stopsPassingBy = extra['stopsPassingBy'] as List<dynamic>?;
+          final startName = extra['startName'] as String?;
+          final endName = extra['endName'] as String?;
+          final startLatLng = extra['startLatLng'] as LatLng?;
+          final endLatLng = extra['endLatLng'] as LatLng?;
+
+          return RouteSuggestionDetailScreen(
+            busRoute: busRoute,
+            stopsPassingBy: stopsPassingBy,
+            startName: startName,
+            endName: endName,
+            startLatLng: startLatLng,
+            endLatLng: endLatLng,
+          );
         },
       ),
       ShellRoute(

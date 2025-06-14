@@ -1,3 +1,4 @@
+import 'package:busmapcantho/core/utils/string_utils.dart';
 import 'package:busmapcantho/presentation/widgets/gradient_border_widget.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
@@ -5,7 +6,11 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../core/theme/app_colors.dart';
 
-class LocationInputSection<CubitType extends StateStreamable<StateType>, StateType> extends StatefulWidget {
+class LocationInputSection<
+  CubitType extends StateStreamable<StateType>,
+  StateType
+>
+    extends StatefulWidget {
   // Static configurations and callbacks
   final IconData startIcon;
   final IconData endIcon;
@@ -14,8 +19,8 @@ class LocationInputSection<CubitType extends StateStreamable<StateType>, StateTy
   final String startPlaceholder;
   final String endPlaceholder;
   final VoidCallback? onSelectStart; // Re-added
-  final VoidCallback? onSelectEnd;   // Re-added
-  final VoidCallback? onSwap;        // Re-added
+  final VoidCallback? onSelectEnd; // Re-added
+  final VoidCallback? onSwap; // Re-added
   final bool showSwapButton;
   final bool isReadOnly;
   final bool useCardWrapper; // New parameter
@@ -23,15 +28,17 @@ class LocationInputSection<CubitType extends StateStreamable<StateType>, StateTy
   // Functions to extract dynamic names from the StateType
   final String? Function(StateType state) getStartName;
   final String? Function(StateType state) getEndName;
-  final bool Function(StateType state) getStartInputError; // New: to get start error status
-  final bool Function(StateType state) getEndInputError;   // New: to get end error status
+  final bool Function(StateType state)
+  getStartInputError; // New: to get start error status
+  final bool Function(StateType state)
+  getEndInputError; // New: to get end error status
 
   const LocationInputSection({
     super.key,
     required this.getStartName,
     required this.getEndName,
     required this.getStartInputError, // New
-    required this.getEndInputError,   // New
+    required this.getEndInputError, // New
     required this.startIcon,
     required this.endIcon,
     required this.startIconColor,
@@ -39,8 +46,8 @@ class LocationInputSection<CubitType extends StateStreamable<StateType>, StateTy
     required this.startPlaceholder,
     required this.endPlaceholder,
     this.onSelectStart, // Re-added
-    this.onSelectEnd,   // Re-added
-    this.onSwap,        // Re-added
+    this.onSelectEnd, // Re-added
+    this.onSwap, // Re-added
     this.showSwapButton = true,
     this.isReadOnly = false,
     this.useCardWrapper = true, // Default to true for existing behavior
@@ -51,8 +58,12 @@ class LocationInputSection<CubitType extends StateStreamable<StateType>, StateTy
       _LocationInputSectionState<CubitType, StateType>();
 }
 
-class _LocationInputSectionState<CubitType extends StateStreamable<StateType>, StateType>
-    extends State<LocationInputSection<CubitType, StateType>> with TickerProviderStateMixin {
+class _LocationInputSectionState<
+  CubitType extends StateStreamable<StateType>,
+  StateType
+>
+    extends State<LocationInputSection<CubitType, StateType>>
+    with TickerProviderStateMixin {
   AnimationController? _startErrorAnimationController;
   Animation<Color?>? _startErrorColorAnimation;
   AnimationController? _endErrorAnimationController;
@@ -76,7 +87,8 @@ class _LocationInputSectionState<CubitType extends StateStreamable<StateType>, S
     super.didChangeDependencies();
     // Initialize animations here because Theme.of(context) is available
     _startErrorColorAnimation = ColorTween(
-      begin: Colors.transparent, // Or widget.startIconColor or theme.primaryColor
+      begin:
+          Colors.transparent, // Or widget.startIconColor or theme.primaryColor
       end: Colors.red,
     ).animate(_startErrorAnimationController!);
 
@@ -91,15 +103,6 @@ class _LocationInputSectionState<CubitType extends StateStreamable<StateType>, S
     _startErrorAnimationController?.dispose();
     _endErrorAnimationController?.dispose();
     super.dispose();
-  }
-
-  String _getShortName(String? description) {
-    if (description == null || description.isEmpty) return '';
-    final firstComma = description.indexOf(',');
-    if (firstComma > 0) {
-      return description.substring(0, firstComma).trim();
-    }
-    return description;
   }
 
   void _triggerErrorAnimation(AnimationController? controller) {
@@ -141,7 +144,9 @@ class _LocationInputSectionState<CubitType extends StateStreamable<StateType>, S
                       name: currentStartName,
                       onTap: widget.isReadOnly ? null : widget.onSelectStart,
                       placeholder: widget.startPlaceholder,
-                      borderColor: _startErrorColorAnimation!.value ?? AppColors.primaryMedium,
+                      borderColor:
+                          _startErrorColorAnimation!.value ??
+                          AppColors.primaryMedium,
                     );
                   },
                 ),
@@ -157,17 +162,16 @@ class _LocationInputSectionState<CubitType extends StateStreamable<StateType>, S
                       name: currentEndName,
                       onTap: widget.isReadOnly ? null : widget.onSelectEnd,
                       placeholder: widget.endPlaceholder,
-                      borderColor: _endErrorColorAnimation!.value ?? AppColors.primaryMedium,
+                      borderColor:
+                          _endErrorColorAnimation!.value ??
+                          AppColors.primaryMedium,
                     );
                   },
                 ),
               ],
             ),
             if (widget.showSwapButton)
-              Positioned(
-                top: 32,
-                child: _buildSwapButton(context, theme),
-              ),
+              Positioned(top: 32, child: _buildSwapButton(context, theme)),
           ],
         );
 
@@ -223,7 +227,9 @@ class _LocationInputSectionState<CubitType extends StateStreamable<StateType>, S
   }) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
-    final displayName = _getShortName(name);
+    final displayName = StringUtils.getShortName(
+      name,
+    ); // Sử dụng StringUtils.getShortName
     final bool hasName = displayName.isNotEmpty;
 
     return InkWell(
@@ -231,10 +237,7 @@ class _LocationInputSectionState<CubitType extends StateStreamable<StateType>, S
       child: Container(
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: borderColor,
-            width: 1.5,
-          ),
+          border: Border.all(color: borderColor, width: 1.5),
         ),
         child: GradientBorderWidget(
           borderColor: Colors.white,
@@ -253,9 +256,12 @@ class _LocationInputSectionState<CubitType extends StateStreamable<StateType>, S
                   child: Text(
                     hasName ? displayName : placeholder,
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: hasName
-                          ? colorScheme.onSurface
-                          : theme.textTheme.bodyMedium?.color?.withAlpha(150),
+                      color:
+                          hasName
+                              ? colorScheme.onSurface
+                              : theme.textTheme.bodyMedium?.color?.withAlpha(
+                                150,
+                              ),
                       fontWeight: hasName ? FontWeight.bold : FontWeight.normal,
                     ),
                     overflow: TextOverflow.ellipsis,
