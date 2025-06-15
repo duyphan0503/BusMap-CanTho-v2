@@ -269,5 +269,12 @@
   "noStopsFound": "Không có trạm nào",
   "lat": "Vĩ độ",
   "lng": "Kinh độ",
-  "bikeInstruction": "Đi xe đạp từ điểm xuất phát đến điểm đích"
+  "bikeInstruction": "Đi xe đạp từ điểm xuất phát đến điểm đích",
+  "distance_meters": "{} mét",
+  "distance_kilometers": "{} kilômét",
+  "duration_minutes": "{{minutes}} phút",
+  "duration_hours": "{{hours}} giờ",
+  "duration_hours_minutes": "{{hours}} giờ {{minutes}} phút",
+  "hour": "giờ",
+  "min": "phút"
 }

@@ -263,5 +263,12 @@
   "noStopsFound": "No stops found",
   "lat": "Lat",
   "lng": "Lng",
-  "bikeInstruction": "Ride a bicycle from start to destination"
+  "bikeInstruction": "Ride a bicycle from start to destination",
+  "distance_meters": "{} meters",
+  "distance_kilometers": "{} kilometers",
+  "duration_minutes": "{{minutes}} minutes",
+  "duration_hours": "{{hours}} hours",
+  "duration_hours_minutes": "{{hours}} hours {{minutes}} minutes",
+  "hour": "h",
+  "min": "min"
 }

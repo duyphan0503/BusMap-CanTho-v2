@@ -89,7 +89,7 @@ class _RouteSuggestionView extends StatelessWidget {
                 endIconColor: Colors.red,
                 startPlaceholder: 'currentLocationPlaceholder'.tr(),
                 endPlaceholder: 'enterDestinationPlaceholder'.tr(),
-                showSwapButton: true,
+                showSwapButton: false,
                 isReadOnly: false,
                 useCardWrapper: false,
               ),
@@ -158,7 +158,7 @@ class _RouteSuggestionView extends StatelessWidget {
     }
     return GestureDetector(
       onTap: () {
-        context.push(AppRoutes.routeSuggestionDetail);
+        /*context.push(AppRoutes.routeSuggestionDetail);*/
       },
       child: Card(
         elevation: 2,

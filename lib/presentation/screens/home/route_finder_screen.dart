@@ -242,7 +242,7 @@ class _RouteFinderViewState extends State<_RouteFinderView> {
   Widget _buildRouteOptionsSection() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [_buildMaxRoutesDropdown(), _buildCustomizeButton()],
+      children: [_buildMaxRoutesDropdown() /*_buildCustomizeButton()*/],
     );
   }
 

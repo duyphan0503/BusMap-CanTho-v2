@@ -24,12 +24,14 @@ class RouteStepPreviewOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     final step = steps[currentStepIndex];
     final instruction = step['instruction'] ?? '';
-    final distance = step['distance'] != null
-        ? '${(step['distance'] / 1000).toStringAsFixed(2)} km'
-        : '';
-    final duration = step['duration'] != null
-        ? '${(step['duration'] / 60).ceil()} phút'
-        : '';
+    final distance =
+        step['distance'] != null
+            ? '${(step['distance'] / 1000).toStringAsFixed(2)} km'
+            : '';
+    final duration =
+        step['duration'] != null
+            ? '${(step['duration'] / 60).ceil()} phút'
+            : '';
     final streetName = step['street_name'] ?? '';
 
     // Determine icon type and color
@@ -81,11 +83,7 @@ class RouteStepPreviewOverlay extends StatelessWidget {
                         color: iconColor.withOpacity(0.2),
                         shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        directionIcon,
-                        color: iconColor,
-                        size: 28,
-                      ),
+                      child: Icon(directionIcon, color: iconColor, size: 28),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -100,17 +98,16 @@ class RouteStepPreviewOverlay extends StatelessWidget {
                   ],
                 ),
 
-                if (streetName.isNotEmpty || distance.isNotEmpty || duration.isNotEmpty)
+                if (streetName.isNotEmpty ||
+                    distance.isNotEmpty ||
+                    duration.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(left: 48, top: 8),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         if (streetName.isNotEmpty)
-                          Text(
-                            streetName,
-                            style: TextStyle(fontSize: 14),
-                          ),
+                          Text(streetName, style: TextStyle(fontSize: 14)),
                         if (distance.isNotEmpty || duration.isNotEmpty)
                           Text(
                             '$distance ${distance.isNotEmpty && duration.isNotEmpty ? '•' : ''} $duration',
@@ -122,7 +119,7 @@ class RouteStepPreviewOverlay extends StatelessWidget {
                       ],
                     ),
                   ),
-                  
+
                 const SizedBox(height: 16),
 
                 // Step counter text
@@ -140,7 +137,7 @@ class RouteStepPreviewOverlay extends StatelessWidget {
       ],
     );
   }
-  
+
   // Methods to get the appropriate icon and color for direction types
   IconData _getIconForType(DirectionIconType type) {
     switch (type) {
