@@ -10,6 +10,7 @@ class BusRoute {
   final String? fareInfo;
   final String? routeType;
   final String? agencyId;
+  final String? agencyName; // Added agency name field
   final DateTime createdAt;
   final DateTime updatedAt;
   final List<RouteStop> stops;
@@ -25,13 +26,17 @@ class BusRoute {
     this.fareInfo,
     this.routeType,
     this.agencyId,
+    this.agencyName, // Added to constructor
     required this.createdAt,
     required this.updatedAt,
     this.stops = const [],
     this.extra,
   });
 
-  factory BusRoute.fromJson(Map<String, dynamic> json, {List<RouteStop>? stops}) {
+  factory BusRoute.fromJson(
+    Map<String, dynamic> json, {
+    List<RouteStop>? stops,
+  }) {
     return BusRoute(
       id: json['id'] as String,
       routeNumber: json['route_number'] as String,
@@ -42,6 +47,7 @@ class BusRoute {
       fareInfo: json['fare_info'] as String?,
       routeType: json['route_type'] as String?,
       agencyId: json['agency_id'] as String?,
+      agencyName: json['agency_name'] as String?, // Parse agency_name from JSON
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
       stops: stops ?? [],
@@ -59,6 +65,7 @@ class BusRoute {
     'fare_info': fareInfo,
     'route_type': routeType,
     'agency_id': agencyId,
+    'agency_name': agencyName, // Include agency name in JSON
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
     // Do not serialize extra

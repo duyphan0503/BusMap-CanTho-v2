@@ -40,6 +40,7 @@ final geodesy = Geodesy();
 class Stop {
   /// Vĩ độ điểm dừng.
   final double lat;
+
   /// Kinh độ điểm dừng.
   final double lng;
 
@@ -51,24 +52,34 @@ class Stop {
 class Bus {
   /// Mã định danh xe buýt.
   final String vehicleId;
+
   /// Mã định danh tuyến xe buýt.
   final String routeId;
+
   /// Danh sách các điểm dừng của tuyến.
   final List<Stop> stops;
+
   /// Vị trí điểm dừng hiện tại (index trong [stops]).
   int fromIndex;
+
   /// Vị trí điểm dừng tiếp theo (index trong [stops]).
   int toIndex;
+
   /// Hướng di chuyển: 1 (đi tới), -1 (quay đầu).
   int direction;
+
   /// Tiến trình di chuyển giữa hai điểm dừng (0..1).
   double progress;
+
   /// Tốc độ hiện tại (mét/giây).
   double speed;
+
   /// Số giây còn lại phải dừng ở trạm.
   int pauseAtStop;
+
   /// Góc phương vị di chuyển (độ).
   double bearing;
+
   /// Trạng thái chỗ ngồi ("low", "medium", "full").
   String occupancyStatus;
 
@@ -111,7 +122,8 @@ class Bus {
 
     // Sử dụng geodesy để tính distance và bearing
     final distance = geodesy.distanceBetweenTwoGeoPoints(fromLatLng, toLatLng);
-    bearing = geodesy.bearingBetweenTwoGeoPoints(fromLatLng, toLatLng).toDouble();
+    bearing =
+        geodesy.bearingBetweenTwoGeoPoints(fromLatLng, toLatLng).toDouble();
 
     double step = (speed / distance).toDouble();
     progress += step;
@@ -199,9 +211,14 @@ Future<void> main() async {
   try {
     // Định nghĩa các tuyến và số lượng xe mỗi tuyến
     final routes = <String, int>{
-      /*'route_01': 2,
-      'route_02': 1,*/
-      'route_001': 1,
+      'route_01-03': 3,
+      'route_05': 1,
+      'route_06': 1,
+      'route_07': 1,
+      'route_08': 1,
+      'route_09': 1,
+      'route_11': 1,
+      'route_14': 1,
       // Thêm tuyến nếu muốn...
     };
 
@@ -257,5 +274,3 @@ Future<void> main() async {
     logger.e('Unhandled exception in main: $e', stackTrace: stackTrace);
   }
 }
-
-

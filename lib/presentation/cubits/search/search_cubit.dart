@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:busmapcantho/core/services/places_service.dart';
 import 'package:busmapcantho/data/model/bus_route.dart';
 import 'package:busmapcantho/data/model/bus_stop.dart';
 import 'package:busmapcantho/data/model/search_history.dart';
@@ -7,6 +10,7 @@ import 'package:busmapcantho/data/repositories/search_history_repository.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:nominatim_flutter/model/response/nominatim_response.dart';
 
 part 'search_state.dart';
 
@@ -15,11 +19,15 @@ class SearchCubit extends Cubit<SearchState> {
   final BusRouteRepository _busRouteRepository;
   final BusStopRepository _busStopRepository;
   final SearchHistoryRepository _searchHistoryRepository;
+  final PlacesService _placesService;
+
+  Timer? _debounce;
 
   SearchCubit(
     this._busRouteRepository,
     this._busStopRepository,
     this._searchHistoryRepository,
+    this._placesService,
   ) : super(const SearchState());
 
   // Search for both routes and stops
@@ -29,11 +37,7 @@ class SearchCubit extends Cubit<SearchState> {
       return;
     }
 
-    emit(state.copyWith(
-      query: query,
-      isLoading: true,
-      error: null,
-    ));
+    emit(state.copyWith(query: query, isLoading: true, error: null));
 
     try {
       // Search for routes and stops in parallel
@@ -47,17 +51,62 @@ class SearchCubit extends Cubit<SearchState> {
       // Save search to history
       await _searchHistoryRepository.addSearchHistory(query);
 
-      emit(state.copyWith(
-        routeResults: routes,
-        stopResults: stops,
-        isLoading: false,
-      ));
+      emit(
+        state.copyWith(
+          routeResults: routes,
+          stopResults: stops,
+          isLoading: false,
+        ),
+      );
     } catch (e) {
-      emit(state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      ));
+      emit(state.copyWith(isLoading: false, error: e.toString()));
     }
+  }
+
+  // Tìm kiếm địa điểm với debounce để tránh gọi API liên tục
+  void searchPlaces(String query) {
+    // Hủy timer debounce trước nếu có
+    _debounce?.cancel();
+
+    if (query.isEmpty) {
+      emit(
+        state.copyWith(
+          query: query,
+          placeResults: const [],
+          isLoadingPlaces: false,
+          placeError: null,
+        ),
+      );
+      return;
+    }
+
+    // Đặt trạng thái loading và cập nhật query
+    emit(state.copyWith(query: query, isLoadingPlaces: true, placeError: null));
+
+    // Sử dụng debounce để đợi người dùng nhập xong
+    _debounce = Timer(const Duration(milliseconds: 300), () async {
+      try {
+        // Gọi API tìm kiếm
+        final places = await _placesService.searchPlaces(query);
+
+        // Chỉ cập nhật kết quả nếu query hiện tại vẫn giống với query ban đầu
+        // để tránh hiển thị kết quả của query cũ
+        if (state.query == query) {
+          emit(state.copyWith(placeResults: places, isLoadingPlaces: false));
+        }
+      } catch (e) {
+        // Chỉ hiển thị lỗi cho query hiện tại
+        if (state.query == query) {
+          emit(
+            state.copyWith(
+              isLoadingPlaces: false,
+              placeError: e.toString(),
+              placeResults: const [],
+            ),
+          );
+        }
+      }
+    });
   }
 
   // Load search history
@@ -66,15 +115,9 @@ class SearchCubit extends Cubit<SearchState> {
 
     try {
       final history = await _searchHistoryRepository.getSearchHistory();
-      emit(state.copyWith(
-        searchHistory: history,
-        isLoadingHistory: false,
-      ));
+      emit(state.copyWith(searchHistory: history, isLoadingHistory: false));
     } catch (e) {
-      emit(state.copyWith(
-        isLoadingHistory: false,
-        historyError: e.toString(),
-      ));
+      emit(state.copyWith(isLoadingHistory: false, historyError: e.toString()));
     }
   }
 
@@ -84,15 +127,15 @@ class SearchCubit extends Cubit<SearchState> {
 
     try {
       await _searchHistoryRepository.clearSearchHistory();
-      emit(state.copyWith(
-        searchHistory: const [],
-        isLoadingHistory: false,
-      ));
+      emit(state.copyWith(searchHistory: const [], isLoadingHistory: false));
     } catch (e) {
-      emit(state.copyWith(
-        isLoadingHistory: false,
-        historyError: e.toString(),
-      ));
+      emit(state.copyWith(isLoadingHistory: false, historyError: e.toString()));
     }
+  }
+
+  @override
+  Future<void> close() {
+    _debounce?.cancel();
+    return super.close();
   }
 }

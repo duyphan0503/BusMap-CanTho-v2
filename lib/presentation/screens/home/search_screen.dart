@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:busmapcantho/core/services/notification_snackbar_service.dart';
 import 'package:busmapcantho/core/services/places_service.dart';
 import 'package:busmapcantho/presentation/cubits/route_finder/route_finder_cubit.dart';
+import 'package:busmapcantho/presentation/cubits/search/search_cubit.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -11,7 +12,6 @@ import 'package:go_router/go_router.dart';
 import 'package:nominatim_flutter/model/response/nominatim_response.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../../core/di/injection.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../cubits/route_finder/route_finder_state.dart';
 import '../../routes/app_routes.dart';
@@ -28,20 +28,27 @@ class _SearchScreenState extends State<SearchScreen> {
   static const _historyKey = 'search_history';
 
   RouteFinderCubit get _routeFinderCubit => context.read<RouteFinderCubit>();
+  SearchCubit get _searchCubit => context.read<SearchCubit>();
 
   final TextEditingController _controller = TextEditingController();
-  final PlacesService _placesService = getIt<PlacesService>();
-
-  List<NominatimResponse> _suggestions = [];
   List<NominatimResponse> _history = [];
-  Timer? _debounce;
-  bool _isLoading = false;
+
+  // Biến để lưu trữ giá trị query cuối cùng
+  String _lastQuery = '';
 
   @override
   void initState() {
     super.initState();
     _loadHistory();
-    _controller.addListener(_onQueryChanged);
+    // Thay đổi từ addListener sang addListener với onChanged
+    _controller.addListener(_onCursorPositionChanged);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_onCursorPositionChanged);
+    _controller.dispose();
+    super.dispose();
   }
 
   Future<void> _loadHistory() async {
@@ -77,55 +84,8 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   void _onQueryChanged() {
-    _debounce?.cancel();
     final text = _controller.text.trim();
-    if (text.isEmpty) {
-      setState(() => _suggestions = []);
-      return;
-    }
-    _debounce = Timer(const Duration(milliseconds: 300), () {
-      _fetchSuggestions(text);
-    });
-  }
-
-  Future<void> _fetchSuggestions(String query) async {
-    setState(() => _isLoading = true);
-    try {
-      var places = await _placesService.searchPlaces(query);
-      if (places.isEmpty) {
-        // fallback to history
-        final historySug =
-            _history
-                .where(
-                  (h) =>
-                      h.displayName?.toLowerCase().contains(
-                        query.toLowerCase(),
-                      ) ??
-                      false,
-                )
-                .toList();
-        setState(() {
-          _suggestions = historySug;
-          _isLoading = false;
-        });
-        return;
-      }
-      final filtered =
-          places
-              .where(
-                (p) => p.placeName.toLowerCase().contains(query.toLowerCase()),
-              )
-              .toList();
-      setState(() {
-        _suggestions = filtered;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (mounted) {
-        context.showErrorSnackBar('errorFetchingSuggestions'.tr());
-      }
-      setState(() => _isLoading = false);
-    }
+    _searchCubit.searchPlaces(text);
   }
 
   Future<void> _onSuggestionTap(NominatimResponse place) async {
@@ -172,70 +132,94 @@ class _SearchScreenState extends State<SearchScreen> {
     setState(() => _history.clear());
   }
 
+  // Hàm mới để kiểm tra khi nào văn bản thực sự thay đổi
+  void _onCursorPositionChanged() {
+    final text = _controller.text.trim();
+    // Chỉ gọi searchPlaces khi nội dung thực sự thay đổi
+    if (text != _lastQuery) {
+      _lastQuery = text;
+      _onQueryChanged();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final showHistory = _controller.text.trim().isEmpty && !_isLoading;
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        flexibleSpace: Container(
-          decoration: const BoxDecoration(
-            gradient: AppColors.primaryGradient,
-            borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
-          ),
-        ),
-        iconTheme: const IconThemeData(color: AppColors.textOnPrimary),
-        toolbarHeight: 72,
-        leadingWidth: 36,
-        title: _buildSearchBarTitle(theme),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          FavoriteLabelSelector(),
-          buildPickOnMapButton(),
-          if (showHistory && _history.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(
-                top: 8,
-                left: 8,
-                right: 8,
-                bottom: 0,
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(left: 8),
-                    child: Text(
-                      'searchHistory'.tr(),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.delete_sweep,
-                      color: AppColors.primaryMedium,
-                    ),
-                    tooltip: 'clearHistory'.tr(),
-                    onPressed: _clearHistory,
-                  ),
-                ],
+    return BlocConsumer<SearchCubit, SearchState>(
+      listenWhen:
+          (previous, current) => previous.placeError != current.placeError,
+      listener: (context, state) {
+        if (state.placeError != null) {
+          context.showErrorSnackBar('errorFetchingSuggestions'.tr());
+        }
+      },
+      builder: (context, state) {
+        final showHistory =
+            _controller.text.trim().isEmpty && !state.isLoadingPlaces;
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            flexibleSpace: Container(
+              decoration: const BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(12),
+                ),
               ),
             ),
-          Expanded(
-            child:
-                showHistory
-                    ? _buildHistoryList(theme)
-                    : _buildSuggestions(theme),
+            iconTheme: const IconThemeData(color: AppColors.textOnPrimary),
+            toolbarHeight: 72,
+            leadingWidth: 36,
+            title: _buildSearchBarTitle(theme),
+            centerTitle: true,
           ),
-        ],
-      ),
+          body: Column(
+            children: [
+              FavoriteLabelSelector(),
+              buildPickOnMapButton(),
+              if (showHistory && _history.isNotEmpty)
+                Padding(
+                  padding: const EdgeInsets.only(
+                    top: 8,
+                    left: 8,
+                    right: 8,
+                    bottom: 0,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: Text(
+                          'searchHistory'.tr(),
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_sweep,
+                          color: AppColors.primaryMedium,
+                        ),
+                        tooltip: 'clearHistory'.tr(),
+                        onPressed: _clearHistory,
+                      ),
+                    ],
+                  ),
+                ),
+              Expanded(
+                child:
+                    showHistory
+                        ? _buildHistoryList(theme)
+                        : _buildSuggestions(theme, state),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -264,7 +248,7 @@ class _SearchScreenState extends State<SearchScreen> {
                       ),
                       onPressed: () {
                         _controller.clear();
-                        setState(() => _suggestions = []);
+                        _searchCubit.searchPlaces('');
                       },
                     )
                     : null,
@@ -348,14 +332,14 @@ class _SearchScreenState extends State<SearchScreen> {
     );
   }
 
-  Widget _buildSuggestions(ThemeData theme) {
-    if (_isLoading) {
+  Widget _buildSuggestions(ThemeData theme, SearchState state) {
+    if (state.isLoadingPlaces) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.primaryMedium),
       );
     }
 
-    if (_suggestions.isEmpty) {
+    if (state.placeResults.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -377,11 +361,11 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     return ListView.separated(
-      itemCount: _suggestions.length,
+      itemCount: state.placeResults.length,
       separatorBuilder:
           (_, __) => Divider(height: 1, color: AppColors.dividerColor),
       itemBuilder: (context, index) {
-        final place = _suggestions[index];
+        final place = state.placeResults[index];
         final coords = place.toLatLng;
         final isHistory = coords.latitude == 0.0 && coords.longitude == 0.0;
 

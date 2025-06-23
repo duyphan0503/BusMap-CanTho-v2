@@ -1,47 +1,89 @@
+import 'dart:convert';
+
+import 'package:http/http.dart' as http;
 import 'package:injectable/injectable.dart';
 import 'package:latlong2/latlong.dart';
+import 'package:logger/logger.dart';
 import 'package:nominatim_flutter/model/request/reverse_request.dart';
-import 'package:nominatim_flutter/model/request/search_request.dart';
 import 'package:nominatim_flutter/model/response/nominatim_response.dart';
 import 'package:nominatim_flutter/nominatim_flutter.dart';
+
 // Thêm import này
+final logger = Logger();
 
 @injectable
 class PlacesService {
   Future<List<NominatimResponse>> searchPlaces(String query) async {
-    final baseReq = SearchRequest(
+    try {
+      final q = Uri.encodeComponent(query.trim());
+
+      final uri = Uri.parse(
+        'https://nominatim.openstreetmap.org/search'
+        '?q=$q'
+        '&format=jsonv2'
+        '&limit=15'
+        '&addressdetails=1'
+        '&namedetails=1'
+        '&countrycodes=vn'
+        '&viewbox=105.22,10.325,106.29,9.238'
+        '&bounded=1'
+        '&accept-language=vi',
+      );
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'User-Agent': 'busmapcantho/2.0', // Cập nhật User-Agent
+        },
+      );
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as List;
+        // Chuyển đổi List<dynamic> thành List<NominatimResponse>
+        return data
+            .map(
+              (item) =>
+                  NominatimResponse.fromJson(item as Map<String, dynamic>),
+            )
+            .toList();
+      } else {
+        logger.w('Nominatim HTTP error: ${response.statusCode}');
+        throw Exception('Không thể tìm kiếm địa điểm. Vui lòng thử lại sau.');
+      }
+    } catch (e, stackTrace) {
+      logger.e('Nominatim search failed', error: e, stackTrace: stackTrace);
+      throw Exception(
+        'Đã xảy ra lỗi khi tìm kiếm. Kiểm tra kết nối mạng hoặc thử lại sau.',
+      );
+    }
+  }
+  /*Future<List<NominatimResponse>> searchPlaces(String query) async {
+    // 1. Tối ưu hóa query: Luôn thêm "Cần Thơ" để tăng độ chính xác và
+    // tránh phải thực hiện cuộc gọi thứ hai.
+    */ /*final normalizedQuery =
+        query.toLowerCase().contains('cần thơ') ? query : '$query, Cần Thơ';*/ /*
+
+    final request = SearchRequest(
       query: query,
-      limit: 10,
+      limit: 15, // Tăng giới hạn kết quả để có nhiều lựa chọn hơn
       addressDetails: true,
-      extraTags: true,
       nameDetails: true,
+      extraTags: false, // TẮT extraTags để giảm kích thước payload
       countryCodes: ['vn'],
-      viewBox: ViewBox(10.3272, 9.9189, 105.8431, 105.2272),
+      language: 'vi',
+      // Giữ viewBox để ưu tiên kết quả trong khu vực Cần Thơ
+      viewBox: ViewBox(10.32664, 9.24131, 106.29204, 105.22533),
     );
 
-    var responses = await NominatimFlutter.instance.search(
-      searchRequest: baseReq,
+    // 2. Chỉ có MỘT lần `await` duy nhất.
+    // Kết quả sẽ nhanh hơn đáng kể vì không còn kịch bản chờ đợi lần thứ hai.
+    final responses = await NominatimFlutter.instance.search(
+      searchRequest: request,
       language: 'vi',
     );
 
-    if (responses.isEmpty && !query.toLowerCase().contains('cần thơ')) {
-      final extReq = SearchRequest(
-        query: '$query Cần Thơ',
-        limit: 10,
-        addressDetails: true,
-        extraTags: true,
-        nameDetails: true,
-        countryCodes: ['vn'],
-        viewBox: baseReq.viewBox,
-      );
-      responses = await NominatimFlutter.instance.search(
-        searchRequest: extReq,
-        language: 'vi',
-      );
-    }
-
     return responses;
-  }
+  }*/
 
   Future<NominatimResponse?> getAddressFromCoordinates(
     double lat,

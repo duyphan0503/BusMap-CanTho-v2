@@ -1,20 +1,22 @@
 import 'package:busmapcantho/core/di/injection.dart';
+import 'package:busmapcantho/core/utils/operating_hours_translator.dart'; // Import the translator
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:latlong2/latlong.dart' as osm;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:easy_localization/easy_localization.dart';
 
+import '../../../core/services/notification_local_service.dart'; // Import dịch vụ thông báo
 import '../../../core/theme/app_colors.dart';
 import '../../../data/model/bus_route.dart';
 import '../../../data/model/bus_stop.dart';
-import '../../../core/services/notification_local_service.dart'; // Import dịch vụ thông báo
+import '../../../domain/usecases/bus_routes/get_bus_route_by_id_usecase.dart';
 import '../../cubits/bus_location/bus_location_cubit.dart';
 import '../../cubits/bus_routes/routes_cubit.dart';
 import '../../widgets/bus_map_widget.dart';
-import '../../widgets/review_section.dart';
 import '../../widgets/marquee_text.dart';
+import '../../widgets/review_section.dart';
 
 class RouteDetailMapScreen extends StatefulWidget {
   final BusRoute route;
@@ -39,6 +41,8 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
   bool _isTripModeActive = false;
 
   List<BusStop> _stops = [];
+  List<BusStop> _outboundStops = [];
+  List<BusStop> _inboundStops = [];
   BusStop? _selectedStop;
 
   bool _notifyApproach = false;
@@ -64,10 +68,36 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
   Future<void> _loadStopsAndRoute() async {
     try {
       final cubit = context.read<RoutesCubit>();
-      final outbound = cubit.state.routeStopsMap[widget.route.id] ?? [];
+
+      // Fetch the route with all its stops
+      final detailedRoute = await getIt<GetBusRouteByIdUseCase>()(
+        widget.route.id,
+      );
+      if (!mounted) return;
+
+      final allStops = detailedRoute!.stops;
+
+      // Separate stops by direction
+      final outboundStops =
+          allStops
+              .where((routeStop) => routeStop.direction == 0)
+              .map((routeStop) => routeStop.stop)
+              .toList();
+
+      final inboundStops =
+          allStops
+              .where((routeStop) => routeStop.direction == 1)
+              .map((routeStop) => routeStop.stop)
+              .toList();
+
+      // Load route geometries that follow actual roads
+      await cubit.loadRouteGeometries(widget.route.id);
+
       if (!mounted) return;
       setState(() {
-        _stops = outbound;
+        _outboundStops = outboundStops;
+        _inboundStops = inboundStops;
+        _stops = _isOutbound ? _outboundStops : _inboundStops;
         _selectedStop = _stops.isNotEmpty ? _stops.first : null;
         _isLoading = false;
       });
@@ -78,6 +108,42 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
       });
       // Handle error appropriately
     }
+  }
+
+  // Helper to get route points, using geometries if available or falling back to straight lines
+  List<List<osm.LatLng>> _getAllRoutePoints() {
+    final cubit = context.read<RoutesCubit>();
+    final geometries = cubit.state.routeGeometryMap[widget.route.id];
+
+    final List<List<osm.LatLng>> allPoints = [];
+
+    // Outbound
+    if (geometries != null &&
+        geometries.containsKey(0) &&
+        geometries[0]!.isNotEmpty) {
+      allPoints.add(
+        geometries[0]!.map((p) => osm.LatLng(p.latitude, p.longitude)).toList(),
+      );
+    } else {
+      allPoints.add(
+        _outboundStops.map((s) => osm.LatLng(s.latitude, s.longitude)).toList(),
+      );
+    }
+
+    // Inbound
+    if (geometries != null &&
+        geometries.containsKey(1) &&
+        geometries[1]!.isNotEmpty) {
+      allPoints.add(
+        geometries[1]!.map((p) => osm.LatLng(p.latitude, p.longitude)).toList(),
+      );
+    } else {
+      allPoints.add(
+        _inboundStops.map((s) => osm.LatLng(s.latitude, s.longitude)).toList(),
+      );
+    }
+
+    return allPoints;
   }
 
   Future<void> _loadNotificationSettings() async {
@@ -93,14 +159,9 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
   void _toggleDirection(bool outbound) {
     if (_isOutbound == outbound) return;
 
-    final cubit = context.read<RoutesCubit>();
-    final stopsMap = outbound
-        ? cubit.state.routeStopsMap[widget.route.id] ?? []
-        : (cubit.state.routeStopsMap[widget.route.id]?.reversed.toList() ?? []);
-
     setState(() {
       _isOutbound = outbound;
-      _stops = stopsMap;
+      _stops = outbound ? _outboundStops : _inboundStops;
       _selectedStop = _stops.isNotEmpty ? _stops.first : null;
     });
 
@@ -129,10 +190,15 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
     }
     // Fallback: use address or coordinates if name is empty
     String label(BusStop stop) {
-      if (stop.name.isNotEmpty) return stop.name;
-      if (stop.address != null && stop.address!.isNotEmpty) return stop.address!;
+      if (stop.name.isNotEmpty) {
+        return stop.name;
+      }
+      if (stop.address != null && stop.address!.isNotEmpty) {
+        return stop.address!;
+      }
       return '${stop.latitude.toStringAsFixed(4)},${stop.longitude.toStringAsFixed(4)}';
     }
+
     return outbound
         ? '${label(start)} -> ${label(end)}'
         : '${label(end)} -> ${label(start)}';
@@ -148,26 +214,28 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => NotificationSettingsDialog(
-          notifyApproach: _notifyApproach,
-          notifyArrival: _notifyArrival,
-          notifyDeparture: _notifyDeparture,
-          onApproachChanged: (value) {
-            setModalState(() => _notifyApproach = value);
-            prefs.setBool('notify_approach', value);
-          },
-          onArrivalChanged: (value) {
-            setModalState(() => _notifyArrival = value);
-            prefs.setBool('notify_arrival', value);
-          },
-          onDepartureChanged: (value) {
-            setModalState(() => _notifyDeparture = value);
-            prefs.setBool('notify_departure', value);
-          },
-          onDone: () => Navigator.pop(context),
-        ),
-      ),
+      builder:
+          (context) => StatefulBuilder(
+            builder:
+                (context, setModalState) => NotificationSettingsDialog(
+                  notifyApproach: _notifyApproach,
+                  notifyArrival: _notifyArrival,
+                  notifyDeparture: _notifyDeparture,
+                  onApproachChanged: (value) {
+                    setModalState(() => _notifyApproach = value);
+                    prefs.setBool('notify_approach', value);
+                  },
+                  onArrivalChanged: (value) {
+                    setModalState(() => _notifyArrival = value);
+                    prefs.setBool('notify_arrival', value);
+                  },
+                  onDepartureChanged: (value) {
+                    setModalState(() => _notifyDeparture = value);
+                    prefs.setBool('notify_departure', value);
+                  },
+                  onDone: () => Navigator.pop(context),
+                ),
+          ),
     );
   }
 
@@ -179,15 +247,21 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: _buildAppBar(theme),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator(color: AppColors.primaryMedium))
-          : BlocConsumer<BusLocationCubit, BusLocationState>(
-              listener: (context, state) => _handleBusLocationUpdate(state),
-              builder: (context, busLocationState) => _buildMainContent(
-                theme,
-                busLocationState: busLocationState,
+      body:
+          _isLoading
+              ? const Center(
+                child: CircularProgressIndicator(
+                  color: AppColors.primaryMedium,
+                ),
+              )
+              : BlocConsumer<BusLocationCubit, BusLocationState>(
+                listener: (context, state) => _handleBusLocationUpdate(state),
+                builder:
+                    (context, busLocationState) => _buildMainContent(
+                      theme,
+                      busLocationState: busLocationState,
+                    ),
               ),
-            ),
     );
   }
 
@@ -211,9 +285,12 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
       String? status; // Trạng thái cho NotificationLocalService
 
       // Thiết lập các ngưỡng khoảng cách để xác định trạng thái xe buýt
-      const double approachingThreshold = 500; // Xe đang đến gần khi cách trạm 500m
-      const double arrivedThreshold = 100;    // Xe đã đến nơi khi cách trạm dưới 100m
-      const double departedThreshold = 200;   // Xe đã rời đi khi đã từng ở trạng thái arrived và cách trạm trên 200m
+      const double approachingThreshold =
+          500; // Xe đang đến gần khi cách trạm 500m
+      const double arrivedThreshold =
+          100; // Xe đã đến nơi khi cách trạm dưới 100m
+      const double departedThreshold =
+          200; // Xe đã rời đi khi đã từng ở trạng thái arrived và cách trạm trên 200m
 
       // Logic cải tiến để xác định trạng thái xe buýt chính xác hơn
       if (dist <= arrivedThreshold && prevStatus != 'arrived') {
@@ -222,31 +299,40 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
         if (_notifyArrival) {
           status = 'arrived';
           notificationTitle = 'route.busArrivedAtStopTitle'.tr();
-          notificationMessage = 'route.busArrivedAtStop'.tr(args: [bus.vehicleId, _selectedStop!.name]);
+          notificationMessage = 'route.busArrivedAtStop'.tr(
+            args: [bus.vehicleId, _selectedStop!.name],
+          );
         }
-      }
-      else if (prevStatus == 'arrived' && dist > departedThreshold) {
+      } else if (prevStatus == 'arrived' && dist > departedThreshold) {
         // Chuyển từ arrived sang departed
         newStatus = 'departed';
         if (_notifyDeparture) {
           status = 'departed';
           notificationTitle = 'route.busDepartedStopTitle'.tr();
-          notificationMessage = 'route.busDepartedStop'.tr(args: [bus.vehicleId, _selectedStop!.name]);
+          notificationMessage = 'route.busDepartedStop'.tr(
+            args: [bus.vehicleId, _selectedStop!.name],
+          );
         }
-      }
-      else if (dist <= approachingThreshold && dist > arrivedThreshold && prevStatus == 'away') {
+      } else if (dist <= approachingThreshold &&
+          dist > arrivedThreshold &&
+          prevStatus == 'away') {
         // Chuyển từ away sang approaching
         newStatus = 'approaching';
         if (_notifyApproach) {
           status = 'approaching';
           notificationTitle = 'route.busApproachingStopTitle'.tr();
-          notificationMessage = 'route.busApproachingStop'.tr(args: [bus.vehicleId, _selectedStop!.name]);
+          notificationMessage = 'route.busApproachingStop'.tr(
+            args: [bus.vehicleId, _selectedStop!.name],
+          );
         }
       }
 
       if (newStatus != prevStatus) {
         _busStatuses[bus.vehicleId] = newStatus;
-        if (_isTripModeActive && status != null && notificationMessage.isNotEmpty && mounted) {
+        if (_isTripModeActive &&
+            status != null &&
+            notificationMessage.isNotEmpty &&
+            mounted) {
           // Sử dụng NotificationLocalService để hiển thị thông báo trên thanh thông báo
           final notificationService = NotificationLocalService();
           notificationService.showBusNotification(
@@ -276,20 +362,30 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
       ),
       title: Text(
         widget.route.routeName,
-        style: theme.appBarTheme.titleTextStyle ?? theme.textTheme.titleLarge?.copyWith(color: AppColors.textOnPrimary),
+        style:
+            theme.appBarTheme.titleTextStyle ??
+            theme.textTheme.titleLarge?.copyWith(
+              color: AppColors.textOnPrimary,
+            ),
       ),
       centerTitle: true,
       iconTheme: theme.appBarTheme.iconTheme,
       actions: [
         IconButton(
-          icon: const Icon(Icons.directions_bus, color: AppColors.textOnPrimary),
+          icon: const Icon(
+            Icons.directions_bus,
+            color: AppColors.textOnPrimary,
+          ),
           onPressed: () {},
         ),
       ],
     );
   }
 
-  Widget _buildMainContent(ThemeData theme, {required BusLocationState busLocationState}) {
+  Widget _buildMainContent(
+    ThemeData theme, {
+    required BusLocationState busLocationState,
+  }) {
     final busLocations = busLocationState.busLocations.values.toList();
 
     return Stack(
@@ -300,16 +396,17 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
             busStops: _stops,
             isLoading: _isLoading,
             selectedStop: _selectedStop,
-            userLocation: _stops.isNotEmpty
-                ? osm.LatLng(_stops.first.latitude, _stops.first.longitude)
-                : _defaultCenter,
+            userLocation:
+                _stops.isNotEmpty
+                    ? osm.LatLng(_stops.first.latitude, _stops.first.longitude)
+                    : _defaultCenter,
             onStopSelected: (stop) => setState(() => _selectedStop = stop),
             onClearSelectedStop: () => setState(() => _selectedStop = null),
             refreshStops: () => _loadStopsAndRoute(),
             onCenterUser: () {},
             onDirections: () {},
             onRoutes: (stop) {},
-            routePoints: _stops.map((s) => osm.LatLng(s.latitude, s.longitude)).toList(),
+            allRoutePoints: _getAllRoutePoints(),
             busLocations: busLocations,
             routeScreenMapController: _mapController,
           ),
@@ -332,16 +429,24 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
       left: 10,
       child: ElevatedButton.icon(
         icon: Icon(
-          _isTripModeActive ? Icons.pause_circle_filled : Icons.play_circle_filled,
+          _isTripModeActive
+              ? Icons.pause_circle_filled
+              : Icons.play_circle_filled,
           color: Colors.white,
           size: 18,
         ),
         label: Text(
-          _isTripModeActive ? 'route.stopTracking'.tr() : 'route.startTracking'.tr(),
-          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.white, fontSize: 12),
+          _isTripModeActive
+              ? 'route.stopTracking'.tr()
+              : 'route.startTracking'.tr(),
+          style: theme.textTheme.bodyMedium?.copyWith(
+            color: Colors.white,
+            fontSize: 12,
+          ),
         ),
         style: ElevatedButton.styleFrom(
-          backgroundColor: _isTripModeActive ? AppColors.error : AppColors.primaryMedium,
+          backgroundColor:
+              _isTripModeActive ? AppColors.error : AppColors.primaryMedium,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
@@ -355,10 +460,15 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(_isTripModeActive
-                    ? 'route.tripTrackingEnabled'.tr()
-                    : 'route.tripTrackingDisabled'.tr()),
-                backgroundColor: _isTripModeActive ? AppColors.secondaryDark : AppColors.primaryDark,
+                content: Text(
+                  _isTripModeActive
+                      ? 'route.tripTrackingEnabled'.tr()
+                      : 'route.tripTrackingDisabled'.tr(),
+                ),
+                backgroundColor:
+                    _isTripModeActive
+                        ? AppColors.secondaryDark
+                        : AppColors.primaryDark,
                 duration: const Duration(seconds: 2),
               ),
             );
@@ -411,11 +521,15 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryMedium,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
               elevation: 0,
             ),
             onPressed: () => _toggleDirection(!_isOutbound),
-            child: Text(_isOutbound ? 'route.returnTrip'.tr() : 'route.outboundTrip'.tr()),
+            child: Text(
+              _isOutbound ? 'route.returnTrip'.tr() : 'route.outboundTrip'.tr(),
+            ),
           ),
           const SizedBox(width: 8),
           IconButton(
@@ -458,9 +572,7 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
               ],
             ),
           ),
-          Expanded(
-            child: _buildSelectedTabContent(theme),
-          ),
+          Expanded(child: _buildSelectedTabContent(theme)),
         ],
       ),
     );
@@ -475,7 +587,10 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: isSelected ? Colors.white.withAlpha((0.2 * 255).toInt()) : Colors.transparent,
+            color:
+                isSelected
+                    ? Colors.white.withAlpha((0.2 * 255).toInt())
+                    : Colors.transparent,
             borderRadius: BorderRadius.circular(6),
           ),
           child: Column(
@@ -514,16 +629,33 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('route.operatingHoursTitle'.tr(), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        Text(
+          'route.operatingHoursTitle'.tr(),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         const SizedBox(height: 8),
-        if (route.operatingHoursDescription != null && route.operatingHoursDescription!.isNotEmpty)
-          _buildTimeRow('route.timeRange'.tr(), route.operatingHoursDescription!, theme),
-        if (route.frequencyDescription != null && route.frequencyDescription!.isNotEmpty)
-          _buildTimeRow('route.frequency'.tr(), route.frequencyDescription!, theme),
+        if (route.operatingHoursDescription != null &&
+            route.operatingHoursDescription!.isNotEmpty)
+          _buildTimeRow(
+            'route.timeRange'.tr(),
+            route.operatingHoursDescription!,
+            theme,
+          ),
+        if (route.frequencyDescription != null &&
+            route.frequencyDescription!.isNotEmpty)
+          _buildTimeRow(
+            'route.frequency'.tr(),
+            route.frequencyDescription!,
+            theme,
+          ),
         if (route.fareInfo != null && route.fareInfo!.isNotEmpty)
           _buildTimeRow('route.fare'.tr(), route.fareInfo!, theme),
-        if ((route.operatingHoursDescription == null || route.operatingHoursDescription!.isEmpty) &&
-            (route.frequencyDescription == null || route.frequencyDescription!.isEmpty) &&
+        if ((route.operatingHoursDescription == null ||
+                route.operatingHoursDescription!.isEmpty) &&
+            (route.frequencyDescription == null ||
+                route.frequencyDescription!.isEmpty) &&
             (route.fareInfo == null || route.fareInfo!.isEmpty))
           Text('route.noScheduleInfo'.tr(), style: theme.textTheme.bodyMedium),
       ],
@@ -539,7 +671,13 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
             width: 100,
             child: Text(label, style: theme.textTheme.bodyMedium),
           ),
-          Text(time, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500)),
+          // Use OperatingHoursTranslator to format the operating hours
+          Text(
+            OperatingHoursTranslator.translate(time), // Translate here
+            style: theme.textTheme.bodyLarge?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -563,9 +701,15 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
         margin: const EdgeInsets.only(bottom: 8),
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primaryLight.withAlpha((0.1 * 255).toInt()) : Colors.transparent,
+          color:
+              isSelected
+                  ? AppColors.primaryLight.withAlpha((0.1 * 255).toInt())
+                  : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: isSelected ? AppColors.primaryMedium : AppColors.dividerColor),
+          border: Border.all(
+            color:
+                isSelected ? AppColors.primaryMedium : AppColors.dividerColor,
+          ),
         ),
         child: Row(
           children: [
@@ -574,12 +718,19 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
               height: 24,
               alignment: Alignment.center,
               decoration: BoxDecoration(
-                color: isSelected ? AppColors.primaryMedium : AppColors.primaryDark.withAlpha((0.5 * 255).toInt()),
+                color:
+                    isSelected
+                        ? AppColors.primaryMedium
+                        : AppColors.primaryDark.withAlpha((0.5 * 255).toInt()),
                 shape: BoxShape.circle,
               ),
               child: Text(
                 '${index + 1}',
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -587,11 +738,18 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(stop.name, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500)),
+                  Text(
+                    stop.name,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                   Text(
                     stop.address ?? '',
                     style: theme.textTheme.bodySmall?.copyWith(
-                      color: AppColors.primaryDark.withAlpha((0.7 * 255).toInt()),
+                      color: AppColors.primaryDark.withAlpha(
+                        (0.7 * 255).toInt(),
+                      ),
                     ),
                   ),
                 ],
@@ -608,7 +766,12 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('route.infoTitle'.tr(), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+        Text(
+          'route.infoTitle'.tr(),
+          style: theme.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         const SizedBox(height: 12),
         _buildInfoRow('route.number'.tr(), route.routeNumber, theme),
         _buildInfoRow('route.name'.tr(), route.routeName, theme),
@@ -616,10 +779,18 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
           _buildInfoRow('route.description'.tr(), route.description!, theme),
         if (route.routeType != null && route.routeType!.isNotEmpty)
           _buildInfoRow('route.type'.tr(), route.routeType!, theme),
-        if (route.agencyId != null && route.agencyId!.isNotEmpty)
-          _buildInfoRow('route.agency'.tr(), route.agencyId!, theme),
+        if (route.agencyId != null)
+          _buildInfoRow(
+            'route.agency'.tr(),
+            route.agencyName!, // Use agency name if available, otherwise use ID
+            theme,
+          ),
         _buildInfoRow('route.stopsCount'.tr(), '${_stops.length}', theme),
-        _buildInfoRow('route.updatedAt'.tr(), route.updatedAt.toString().split(' ').first, theme),
+        _buildInfoRow(
+          'route.updatedAt'.tr(),
+          route.updatedAt.toString().split(' ').first,
+          theme,
+        ),
       ],
     );
   }
@@ -632,9 +803,21 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
         children: [
           SizedBox(
             width: 120,
-            child: Text(label, style: theme.textTheme.bodyMedium?.copyWith(color: AppColors.primaryDark)),
+            child: Text(
+              label,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: AppColors.primaryDark,
+              ),
+            ),
           ),
-          Expanded(child: Text(value, style: theme.textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500))),
+          Expanded(
+            child: Text(
+              value,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -717,7 +900,9 @@ class NotificationSettingsDialog extends StatelessWidget {
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryMedium,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
               elevation: 0,
             ),
             onPressed: onDone,

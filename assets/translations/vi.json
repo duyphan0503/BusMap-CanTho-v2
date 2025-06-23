@@ -276,5 +276,14 @@
   "duration_hours": "{{hours}} giờ",
   "duration_hours_minutes": "{{hours}} giờ {{minutes}} phút",
   "hour": "giờ",
-  "min": "phút"
+  "min": "phút",
+  "days": {
+    "monday": "Thứ Hai",
+    "tuesday": "Thứ Ba",
+    "wednesday": "Thứ Tư",
+    "thursday": "Thứ Năm",
+    "friday": "Thứ Sáu",
+    "saturday": "Thứ Bảy",
+    "sunday": "Chủ Nhật"
+  }
 }

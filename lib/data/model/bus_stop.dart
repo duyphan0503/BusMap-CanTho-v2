@@ -1,4 +1,4 @@
-import 'dart:typed_data';
+import 'package:busmapcantho/core/utils/geo_utils.dart';
 
 class BusStop {
   final String id;
@@ -24,54 +24,10 @@ class BusStop {
   });
 
   factory BusStop.fromJson(Map<String, dynamic> json) {
-    double lat = 0.0;
-    double lng = 0.0;
-    final raw = json['location'];
+    final geoPoint = GeoPoint.fromGeography(json['location']);
 
-    // Parse location field similar to bus_location.dart
-    if (raw is Map && raw['type'] == 'Point' && raw['coordinates'] is List) {
-      // Handle GeoJSON object
-      final coords = raw['coordinates'] as List;
-      if (coords.length == 2) {
-        lng = (coords[0] as num).toDouble();
-        lat = (coords[1] as num).toDouble();
-      }
-    } else if (raw is String) {
-      final s = raw.trim();
-      // WKB Hex string (EWKB) case
-      if (RegExp(r'^[0-9A-Fa-f]+$').hasMatch(s)) {
-        // Decode hex to bytes
-        final bytes = <int>[];
-        for (var i = 0; i < s.length; i += 2) {
-          bytes.add(int.parse(s.substring(i, i + 2), radix: 16));
-        }
-        final data = ByteData.sublistView(Uint8List.fromList(bytes));
-        // Determine byte order
-        final bo = bytes[0] == 0 ? Endian.big : Endian.little;
-        // Read type and check SRID flag
-        final type = data.getUint32(1, bo);
-        // EWKB SRID flag is 0x20000000
-        final hasSrid = (type & 0x20000000) != 0;
-        var offset = 1 + 4;
-        if (hasSrid) offset += 4;
-        // Read coordinates
-        lng = data.getFloat64(offset, bo);
-        lat = data.getFloat64(offset + 8, bo);
-      } else {
-        // WKT format, e.g. "SRID=4326;POINT(lng lat)" or "POINT(lng lat)"
-        final match = RegExp(
-          r'POINT\(\s*([\d\.-]+)\s+([\d\.-]+)\s*\)',
-        ).firstMatch(s);
-        if (match != null) {
-          lng = double.tryParse(match.group(1)!) ?? 0;
-          lat = double.tryParse(match.group(2)!) ?? 0;
-        }
-      }
-    } else {
-      // Fallback for direct lat/lng fields if present
-      lat = (json['latitude'] as num?)?.toDouble() ?? 0.0;
-      lng = (json['longitude'] as num?)?.toDouble() ?? 0.0;
-    }
+    final lat = geoPoint?.lat ?? (json['latitude'] as num?)?.toDouble() ?? 0.0;
+    final lng = geoPoint?.lng ?? (json['longitude'] as num?)?.toDouble() ?? 0.0;
 
     return BusStop(
       id: json['id'] as String,
@@ -102,4 +58,8 @@ class BusStop {
     'created_at': createdAt.toIso8601String(),
     'updated_at': updatedAt.toIso8601String(),
   };
+
+  GeoPoint toGeoPoint() {
+    return GeoPoint(latitude, longitude);
+  }
 }

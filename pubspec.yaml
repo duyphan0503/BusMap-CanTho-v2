@@ -66,6 +66,7 @@ dependencies:
   path_provider: ^2.1.5
   salomon_bottom_bar: ^3.3.2
   flutter_sliding_up_panel: ^2.1.1
+  flutter_map_marker_cluster: ^1.4.0
 
   nominatim_flutter: ^0.0.7
   flutter_gen_runner: ^5.10.0

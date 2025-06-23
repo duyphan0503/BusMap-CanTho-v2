@@ -1,3 +1,5 @@
+import 'dart:io' show Platform;
+
 import 'package:busmapcantho/core/services/notification_snackbar_service.dart';
 import 'package:busmapcantho/core/theme/app_theme.dart';
 import 'package:busmapcantho/presentation/blocs/map/map_bloc.dart';
@@ -15,15 +17,14 @@ import 'package:busmapcantho/presentation/cubits/password/password_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/route_finder/route_finder_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/route_stops/route_stops_cubit.dart';
 import 'package:busmapcantho/presentation/cubits/route_suggestion/route_suggestion_cubit.dart';
+import 'package:busmapcantho/presentation/cubits/search/search_cubit.dart';
 import 'package:busmapcantho/presentation/routes/app_router.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'dart:io' show Platform;
 
 import 'core/di/injection.dart';
-
 import 'core/services/notification_local_service.dart';
 
 // Khởi tạo NotificationLocalService trước khi khởi động ứng dụng
@@ -100,6 +101,7 @@ class _BusMapCanThoAppState extends State<BusMapCanThoApp> {
         BlocProvider<RouteSuggestionCubit>(
           create: (_) => getIt<RouteSuggestionCubit>(),
         ),
+        BlocProvider<SearchCubit>(create: (_) => getIt<SearchCubit>()),
       ],
       child: MaterialApp.router(
         title: 'appTitle'.tr(),

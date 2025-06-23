@@ -5,6 +5,8 @@ class RoutesState extends Equatable {
   final List<BusRoute> favoriteRoutes;
   final List<BusRoute> searchResults;
   final Map<String, List<BusStop>> routeStopsMap;
+  final Map<String, Map<int, List<LatLng>>>
+  routeGeometryMap; // Added field for route geometries
 
   final bool isLoadingAll;
   final bool isLoadingFavorites;
@@ -20,6 +22,7 @@ class RoutesState extends Equatable {
     this.favoriteRoutes = const [],
     this.searchResults = const [],
     this.routeStopsMap = const {},
+    this.routeGeometryMap = const {}, // Added default value
     this.isLoadingAll = false,
     this.isLoadingFavorites = false,
     this.isSearching = false,
@@ -34,6 +37,7 @@ class RoutesState extends Equatable {
     List<BusRoute>? favoriteRoutes,
     List<BusRoute>? searchResults,
     Map<String, List<BusStop>>? routeStopsMap,
+    Map<String, Map<int, List<LatLng>>>? routeGeometryMap, // Added parameter
     bool? isLoadingAll,
     bool? isLoadingFavorites,
     bool? isSearching,
@@ -47,6 +51,8 @@ class RoutesState extends Equatable {
       favoriteRoutes: favoriteRoutes ?? this.favoriteRoutes,
       searchResults: searchResults ?? this.searchResults,
       routeStopsMap: routeStopsMap ?? this.routeStopsMap,
+      routeGeometryMap:
+          routeGeometryMap ?? this.routeGeometryMap, // Added field
       isLoadingAll: isLoadingAll ?? this.isLoadingAll,
       isLoadingFavorites: isLoadingFavorites ?? this.isLoadingFavorites,
       isSearching: isSearching ?? this.isSearching,
@@ -63,6 +69,7 @@ class RoutesState extends Equatable {
     favoriteRoutes,
     searchResults,
     routeStopsMap,
+    routeGeometryMap, // Added to props
     isLoadingAll,
     isLoadingFavorites,
     isSearching,

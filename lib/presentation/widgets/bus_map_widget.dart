@@ -46,6 +46,7 @@ class BusMapWidget extends StatefulWidget {
   onPickerMapMoved; // New callback
   final BusMapController? routeScreenMapController; // Added
   final BusStop? animateToStop; // Thêm thuộc tính này
+  final List<List<osm.LatLng>>? allRoutePoints;
 
   const BusMapWidget({
     super.key,
@@ -72,6 +73,7 @@ class BusMapWidget extends StatefulWidget {
     this.onPickerMapMoved, // Add to constructor
     this.routeScreenMapController, // Added
     this.animateToStop,
+    this.allRoutePoints,
   });
 
   @override
@@ -206,8 +208,8 @@ class _BusMapWidgetState extends State<BusMapWidget>
             ),
             cameraConstraint: CameraConstraint.contain(
               bounds: LatLngBounds(
-                osm.LatLng(9.9, 105.6),
-                osm.LatLng(10.2, 105.9),
+                osm.LatLng(9.238, 106.29),
+                osm.LatLng(10.325, 105.22),
               ),
             ),
             onTap: (_, __) {
@@ -283,7 +285,22 @@ class _BusMapWidgetState extends State<BusMapWidget>
                   ),
                 ],
               ),
-            if (widget.routePoints.isNotEmpty)
+            if (widget.allRoutePoints?.isNotEmpty ?? false)
+              PolylineLayer(
+                polylines: [
+                  for (int i = 0; i < widget.allRoutePoints!.length; i++)
+                    if (widget.allRoutePoints![i].isNotEmpty)
+                      Polyline(
+                        points: widget.allRoutePoints![i],
+                        color:
+                            i == 0
+                                ? AppColors.primaryLight
+                                : AppColors.secondaryDark,
+                        strokeWidth: 7.0,
+                      ),
+                ],
+              )
+            else if (widget.routePoints.isNotEmpty)
               PolylineLayer(
                 polylines: [
                   Polyline(
@@ -755,4 +772,3 @@ class StopInfoCard extends StatelessWidget {
     );
   }
 }
-

@@ -3,10 +3,12 @@ import 'package:busmapcantho/data/model/bus_stop.dart';
 import 'package:busmapcantho/domain/usecases/bus_routes/get_all_bus_routes_usecase.dart';
 import 'package:busmapcantho/domain/usecases/bus_routes/search_bus_routes_usecase.dart';
 import 'package:busmapcantho/domain/usecases/favorite/get_favorite_routes_usecase.dart';
+import 'package:busmapcantho/domain/usecases/route_geometry/get_route_geometry_usecase.dart';
 import 'package:busmapcantho/domain/usecases/route_stops/get_route_stops_as_bus_stops_usecase.dart';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:injectable/injectable.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:logger/logger.dart';
 
 part 'routes_state.dart';
@@ -17,6 +19,7 @@ class RoutesCubit extends Cubit<RoutesState> {
   final GetRouteStopsAsBusStopsUseCase _getRouteStopsAsBusStopsUseCase;
   final SearchBusRoutesUseCase _searchBusRoutesUseCase;
   final GetFavoriteRoutesUseCase _getFavoriteRoutesUseCase;
+  final GetRouteGeometryUseCase _getRouteGeometryUseCase;
   final Logger _logger;
 
   RoutesCubit(
@@ -24,6 +27,7 @@ class RoutesCubit extends Cubit<RoutesState> {
     this._getRouteStopsAsBusStopsUseCase,
     this._searchBusRoutesUseCase,
     this._getFavoriteRoutesUseCase,
+    this._getRouteGeometryUseCase,
     this._logger,
   ) : super(const RoutesState());
 
@@ -102,6 +106,42 @@ class RoutesCubit extends Cubit<RoutesState> {
           searchError: 'Không thể tìm kiếm tuyến.',
         ),
       );
+    }
+  }
+
+  /// Loads realistic route geometries that follow actual roads for the specified route
+  ///
+  /// [routeId] - ID of the bus route to load geometries for
+  Future<void> loadRouteGeometries(String routeId) async {
+    try {
+      // Get geometries for both directions
+      final outboundGeometry = await _getRouteGeometryUseCase(routeId, 0);
+      final inboundGeometry = await _getRouteGeometryUseCase(routeId, 1);
+
+      // Create a copy of the existing route geometry map
+      final Map<String, Map<int, List<LatLng>>> updatedGeometries = Map.from(
+        state.routeGeometryMap,
+      );
+
+      // Initialize map for this route if it doesn't exist
+      if (!updatedGeometries.containsKey(routeId)) {
+        updatedGeometries[routeId] = {};
+      }
+
+      // Add the geometries to the map
+      if (outboundGeometry.isNotEmpty) {
+        updatedGeometries[routeId]![0] = outboundGeometry;
+      }
+
+      if (inboundGeometry.isNotEmpty) {
+        updatedGeometries[routeId]![1] = inboundGeometry;
+      }
+
+      // Update the state with the new geometries
+      emit(state.copyWith(routeGeometryMap: updatedGeometries));
+      _logger.d('Loaded route geometries for route $routeId');
+    } catch (e, stack) {
+      _logger.e('Failed to load route geometries: $e\n$stack');
     }
   }
 }

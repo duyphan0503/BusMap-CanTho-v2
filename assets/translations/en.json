@@ -270,5 +270,14 @@
   "duration_hours": "{{hours}} hours",
   "duration_hours_minutes": "{{hours}} hours {{minutes}} minutes",
   "hour": "h",
-  "min": "min"
+  "min": "min",
+  "days": {
+    "monday": "Monday",
+    "tuesday": "Tuesday",
+    "wednesday": "Wednesday",
+    "thursday": "Thursday",
+    "friday": "Friday",
+    "saturday": "Saturday",
+    "sunday": "Sunday"
+  }
 }

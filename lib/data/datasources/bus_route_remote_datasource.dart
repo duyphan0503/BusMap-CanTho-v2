@@ -16,10 +16,19 @@ class BusRouteRemoteDatasource {
     try {
       final response = await _client
           .from('routes')
-          .select('*, agency:agencies(*)')
+          .select('*, agencies(name)')
           .order('route_number');
 
-      return response.map((data) => BusRoute.fromJson(data)).toList();
+      return response.map((data) {
+        // Extract agency_name from the nested agencies object
+        final agencyName =
+            data['agencies'] != null ? data['agencies']['name'] : null;
+
+        // Create a new map with agency_name at the top level
+        final routeData = {...data, 'agency_name': agencyName};
+
+        return BusRoute.fromJson(routeData);
+      }).toList();
     } catch (e) {
       throw Exception('Failed to load bus routes: $e');
     }
@@ -30,22 +39,39 @@ class BusRouteRemoteDatasource {
       final routeData =
           await _client
               .from('routes')
-              .select('*, agency:agencies(*)')
+              .select('*, agencies(name)')
               .eq('id', id)
               .single();
 
+      // Extract agency_name from the nested agencies object
+      final agencyName =
+          routeData['agencies'] != null ? routeData['agencies']['name'] : null;
+
+      // Create a new map with agency_name at the top level
+      final routeWithAgency = {...routeData, 'agency_name': agencyName};
+
       final stopsData = await _client
           .from('route_stops')
-          .select('*, stop:stops(*)')
+          .select(
+            'id, route_id, stop_id, sequence, direction, created_at, updated_at, stop:stops(*)',
+          )
           .eq('route_id', id)
           .order('sequence');
 
       final List<RouteStop> routeStops =
-          stopsData.map<RouteStop>((data) {
-            final busStop = BusStop.fromJson(data['stop']);
-            return RouteStop.fromJson(data, busStop);
-          }).toList();
-      return BusRoute.fromJson(routeData, stops: routeStops);
+          stopsData
+              .map<RouteStop>((data) {
+                final busStopJson = data['stop'];
+                if (busStopJson == null) {
+                  throw Exception('Missing stop data in route_stops');
+                }
+                final busStop = BusStop.fromJson(busStopJson);
+                return RouteStop.fromJson(data, busStop);
+              })
+              .whereType<RouteStop>()
+              .toList();
+
+      return BusRoute.fromJson(routeWithAgency, stops: routeStops);
     } catch (e) {
       throw Exception('Failed to load bus route: $e');
     }
@@ -55,11 +81,20 @@ class BusRouteRemoteDatasource {
     try {
       final response = await _client
           .from('routes')
-          .select('*, agency:agencies(*)')
+          .select('*, agencies(name)')
           .or('route_number.ilike.%$query%,route_name.ilike.%$query%')
           .order('route_number');
 
-      return response.map((data) => BusRoute.fromJson(data)).toList();
+      return response.map((data) {
+        // Extract agency_name from the nested agencies object
+        final agencyName =
+            data['agencies'] != null ? data['agencies']['name'] : null;
+
+        // Create a new map with agency_name at the top level
+        final routeData = {...data, 'agency_name': agencyName};
+
+        return BusRoute.fromJson(routeData);
+      }).toList();
     } catch (e) {
       throw Exception('Failed to search bus routes: $e');
     }
