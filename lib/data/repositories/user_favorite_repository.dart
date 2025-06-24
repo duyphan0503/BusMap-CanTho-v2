@@ -3,7 +3,7 @@ import 'package:injectable/injectable.dart';
 import '../datasources/user_favorite_remote_datasource.dart';
 import '../model/user_favorite.dart';
 
-@lazySingleton
+@injectable
 class UserFavoriteRepository {
   final UserFavoriteRemoteDatasource _remoteDatasource;
 
@@ -37,9 +37,10 @@ class UserFavoriteRepository {
     String? label,
   }) async {
     // Check if already exists
-    final existing = (await getFavoriteRoutes())
-        .where((fav) => fav.routeId == routeId)
-        .toList();
+    final existing =
+        (await getFavoriteRoutes())
+            .where((fav) => fav.routeId == routeId)
+            .toList();
     if (existing.isNotEmpty) {
       // Already exists, do not add duplicate
       return null;

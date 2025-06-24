@@ -3,12 +3,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../model/ticket.dart';
 
-@lazySingleton
+@injectable
 class TicketRemoteDatasource {
   final SupabaseClient _client;
 
-  TicketRemoteDatasource([SupabaseClient? client])
-      : _client = client ?? Supabase.instance.client;
+  TicketRemoteDatasource(this._client);
 
   Future<List<Ticket>> getTickets() async {
     try {
@@ -22,7 +21,7 @@ class TicketRemoteDatasource {
           .select('*, route:routes(*), from_stop:stops(*), to_stop:stops(*)')
           .eq('user_id', user.id)
           .order('purchased_at', ascending: false);
-      
+
       return response.map((data) => Ticket.fromJson(data)).toList();
     } catch (e) {
       throw Exception('Failed to load tickets: $e');
@@ -50,12 +49,15 @@ class TicketRemoteDatasource {
         'status': 'unused',
       };
 
-      final response = await _client
-          .from('tickets')
-          .insert(ticketData)
-          .select('*, route:routes(*), from_stop:stops(*), to_stop:stops(*)')
-          .single();
-      
+      final response =
+          await _client
+              .from('tickets')
+              .insert(ticketData)
+              .select(
+                '*, route:routes(*), from_stop:stops(*), to_stop:stops(*)',
+              )
+              .single();
+
       return Ticket.fromJson(response);
     } catch (e) {
       throw Exception('Failed to purchase ticket: $e');

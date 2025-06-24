@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_animations/flutter_map_animations.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
+import 'package:flutter_map_marker_cluster_plus/flutter_map_marker_cluster_plus.dart';
 import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as osm;
@@ -47,6 +48,7 @@ class BusMapWidget extends StatefulWidget {
   final BusMapController? routeScreenMapController; // Added
   final BusStop? animateToStop; // Thêm thuộc tính này
   final List<List<osm.LatLng>>? allRoutePoints;
+  final int? highlightedDirection; // Add this property
 
   const BusMapWidget({
     super.key,
@@ -74,6 +76,7 @@ class BusMapWidget extends StatefulWidget {
     this.routeScreenMapController, // Added
     this.animateToStop,
     this.allRoutePoints,
+    this.highlightedDirection, // Add to constructor
   });
 
   @override
@@ -90,6 +93,8 @@ class _BusMapWidgetState extends State<BusMapWidget>
   late final StreamSubscription<MapEvent> _mapEventSub;
   double _currentZoom = _initialZoom;
   bool _showMarkers = true;
+  List<BusStop> _visibleStops = []; // Add list to store visible bus stops
+  bool _mapReady = false; // Track if map is rendered at least once
 
   final _tileProvider = FMTCTileProvider(
     stores: const {'mapStore': BrowseStoreStrategy.readUpdateCreate},
@@ -108,10 +113,11 @@ class _BusMapWidgetState extends State<BusMapWidget>
     );
     _mapEventSub = _mapCtrl.mapController.mapEventStream.listen(_onMapEvent);
     _updateRouteScreenMapController(); // Added
-
+    // Remove _updateVisibleStops() from here
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final bounds = _mapCtrl.mapController.camera.visibleBounds;
+      // Remove _updateVisibleStops() from here
       if (widget.onMapMoved != null) {
+        final bounds = _mapCtrl.mapController.camera.visibleBounds;
         widget.onMapMoved!(bounds);
       }
     });
@@ -122,17 +128,55 @@ class _BusMapWidgetState extends State<BusMapWidget>
       setState(() {
         _currentZoom = evt.camera.zoom;
         _showMarkers = _currentZoom >= _markerVisibilityZoomThreshold;
+
+        // Update visible stops when map moves
+        if (_showMarkers) {
+          _updateVisibleStops();
+        }
       });
     }
     if (evt is MapEventMoveEnd && widget.onMapMoved != null) {
       final bounds = _mapCtrl.mapController.camera.visibleBounds;
       widget.onMapMoved!(bounds);
+
+      // Update visible stops when map stops moving
+      if (_showMarkers) {
+        _updateVisibleStops();
+      }
     }
+  }
+
+  // Method to filter stops by current viewport
+  void _updateVisibleStops() {
+    final bounds = _mapCtrl.mapController.camera.visibleBounds;
+
+    // Add buffer around visible area (about 20% extra)
+    final extendedBounds = LatLngBounds(
+      osm.LatLng(
+        bounds.south - (bounds.north - bounds.south) * 0.2,
+        bounds.west - (bounds.east - bounds.west) * 0.2,
+      ),
+      osm.LatLng(
+        bounds.north + (bounds.north - bounds.south) * 0.2,
+        bounds.east + (bounds.east - bounds.west) * 0.2,
+      ),
+    );
+
+    _visibleStops =
+        widget.busStops.where((stop) {
+          final stopPosition = osm.LatLng(stop.latitude, stop.longitude);
+          return extendedBounds.contains(stopPosition);
+        }).toList();
   }
 
   @override
   void didUpdateWidget(BusMapWidget oldWidget) {
     super.didUpdateWidget(oldWidget);
+
+    // Update visible stops when bus stops list changes
+    if (widget.busStops != oldWidget.busStops) {
+      _updateVisibleStops();
+    }
 
     if (widget.routeScreenMapController != oldWidget.routeScreenMapController) {
       _updateRouteScreenMapController(); // Added
@@ -175,7 +219,6 @@ class _BusMapWidgetState extends State<BusMapWidget>
   }
 
   void _updateRouteScreenMapController() {
-    // Added method
     if (widget.routeScreenMapController != null) {
       widget.routeScreenMapController!.animateToStop = (BusStop stop) {
         if (mounted) {
@@ -194,6 +237,29 @@ class _BusMapWidgetState extends State<BusMapWidget>
   @override
   Widget build(BuildContext context) {
     super.build(context);
+
+    // Only update visible stops after map is ready
+    if (_mapReady &&
+        _visibleStops.isEmpty &&
+        widget.busStops.isNotEmpty &&
+        _showMarkers) {
+      _updateVisibleStops();
+    }
+
+    // Mark map as ready after first build
+    if (!_mapReady) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && !_mapReady) {
+          setState(() {
+            _mapReady = true;
+          });
+          _updateRouteScreenMapController();
+          // Now safe to update visible stops
+          _updateVisibleStops();
+        }
+      });
+    }
+
     return Stack(
       children: [
         FlutterMap(
@@ -285,6 +351,7 @@ class _BusMapWidgetState extends State<BusMapWidget>
                   ),
                 ],
               ),
+            // Render all polylines, highlight the selected direction
             if (widget.allRoutePoints?.isNotEmpty ?? false)
               PolylineLayer(
                 polylines: [
@@ -293,10 +360,13 @@ class _BusMapWidgetState extends State<BusMapWidget>
                       Polyline(
                         points: widget.allRoutePoints![i],
                         color:
-                            i == 0
+                            (widget.highlightedDirection ?? 0) == i
                                 ? AppColors.primaryLight
-                                : AppColors.secondaryDark,
-                        strokeWidth: 7.0,
+                                : AppColors.primaryLight.withAlpha(
+                                  (0.7 * 255).toInt(),
+                                ),
+                        strokeWidth:
+                            (widget.highlightedDirection ?? 0) == i ? 7.0 : 4.0,
                       ),
                 ],
               )
@@ -312,7 +382,7 @@ class _BusMapWidgetState extends State<BusMapWidget>
               ),
             if (_showMarkers)
               BusStopMarkerLayer(
-                busStops: widget.busStops,
+                busStops: _visibleStops, // Only show visible stops
                 selectedStop: widget.selectedStop,
                 onStopSelected: (stop) {
                   widget.onStopSelected(stop);
@@ -395,32 +465,110 @@ class BusStopMarkerLayer extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MarkerLayer(
-      markers:
-          busStops.map((stop) {
-            final isSelected = selectedStop?.id == stop.id;
+    // Get current map state for adaptive rendering
+    final mapCamera = MapCamera.of(context);
+    final mapController = MapController.of(context);
+    final currentZoom = mapCamera.zoom;
+
+    // Create markers with different detail levels based on zoom
+    final markers =
+        busStops.map((stop) {
+          final isSelected = selectedStop?.id == stop.id;
+          final stopPoint = osm.LatLng(stop.latitude, stop.longitude);
+
+          // Always use detailed marker for selected stop
+          if (isSelected) {
             return Marker(
-              width: isSelected ? 40 : 32,
-              height: isSelected ? 40 : 32,
-              point: osm.LatLng(stop.latitude, stop.longitude),
+              width: 40,
+              height: 40,
+              point: stopPoint,
               child: GestureDetector(
                 onTap: () => onStopSelected(stop),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: EdgeInsets.all(isSelected ? 2 : 0),
+                child: Container(
+                  padding: const EdgeInsets.all(2),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color:
-                        isSelected ? Colors.blue.shade300 : Colors.transparent,
+                    color: Colors.blue.shade300,
                   ),
                   child: Image.asset(
                     Assets.images.busStops.path,
-                    color: isSelected ? Colors.blue.shade700 : null,
+                    color: Colors.blue.shade700,
                   ),
                 ),
               ),
             );
-          }).toList(),
+          }
+
+          // Simplified markers for medium zoom levels
+          if (currentZoom < 16) {
+            return Marker(
+              width: 24,
+              height: 24,
+              point: stopPoint,
+              child: GestureDetector(
+                onTap: () => onStopSelected(stop),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryMedium,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: Colors.white, width: 1.5),
+                  ),
+                ),
+              ),
+            );
+          }
+
+          // Detailed markers for high zoom levels
+          return Marker(
+            width: 32,
+            height: 32,
+            point: stopPoint,
+            child: GestureDetector(
+              onTap: () => onStopSelected(stop),
+              child: Image.asset(Assets.images.busStops.path),
+            ),
+          );
+        }).toList();
+
+    // Use marker clustering for better performance
+    return MarkerClusterLayer(
+      mapController: mapController,
+      mapCamera: mapCamera,
+      options: MarkerClusterLayerOptions(
+        maxClusterRadius: 45,
+        size: const Size(40, 40),
+        markers: markers,
+        polygonOptions: PolygonOptions(
+          borderColor: AppColors.primaryMedium,
+          color: AppColors.primaryLight.withAlpha(150),
+        ),
+        builder: (context, markers) {
+          return Container(
+            decoration: BoxDecoration(
+              color: AppColors.primaryMedium,
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2),
+              boxShadow: [
+                BoxShadow(
+                  color: Color.fromRGBO(0, 0, 0, 0.2),
+                  blurRadius: 6,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                markers.length.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
     );
   }
 }

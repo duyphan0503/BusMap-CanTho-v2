@@ -1,21 +1,26 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:injectable/injectable.dart';
+import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/di/injection.dart';
 import '../model/bus_stop.dart';
 
 @lazySingleton
 class BusStopRemoteDatasource {
   final SupabaseClient _client;
 
-  BusStopRemoteDatasource([SupabaseClient? client])
-    : _client = client ?? Supabase.instance.client;
+  BusStopRemoteDatasource(this._client);
+
+  final _logger = getIt<Logger>();
 
   Future<List<BusStop>> getBusStops() async {
     try {
       final response = await _client.from('stops').select().order('name');
       return response.map((data) => BusStop.fromJson(data)).toList();
-    } catch (e) {
-      throw Exception('Failed to load bus stops: $e');
+    } catch (e, stack) {
+      _logger.e('Failed to load bus stops', error: e, stackTrace: stack);
+      throw Exception(tr('errorLoadingBusStops'));
     }
   }
 
@@ -24,8 +29,9 @@ class BusStopRemoteDatasource {
       final response =
           await _client.from('stops').select().eq('id', id).single();
       return BusStop.fromJson(response);
-    } catch (e) {
-      throw Exception('Failed to load bus stop: $e');
+    } catch (e, stack) {
+      _logger.e('Failed to load bus stop', error: e, stackTrace: stack);
+      throw Exception(tr('errorLoadingBusStops'));
     }
   }
 
@@ -37,8 +43,9 @@ class BusStopRemoteDatasource {
           .ilike('name', '%$query%')
           .order('name');
       return response.map((data) => BusStop.fromJson(data)).toList();
-    } catch (e) {
-      throw Exception('Failed to search bus stops: $e');
+    } catch (e, stack) {
+      _logger.e('Failed to search bus stops', error: e, stackTrace: stack);
+      throw Exception(tr('errorSearching'));
     }
   }
 
@@ -68,8 +75,9 @@ class BusStopRemoteDatasource {
       }
 
       return response.map((data) => BusStop.fromJson(data)).toList();
-    } catch (e) {
-      throw Exception('Failed to get nearby bus stops: $e');
+    } catch (e, stack) {
+      _logger.e('Failed to get nearby bus stops', error: e, stackTrace: stack);
+      throw Exception(tr('fetchError'));
     }
   }
 }

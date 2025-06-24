@@ -2,17 +2,22 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:busmapcantho/configs/env.dart';
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/services.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:injectable/injectable.dart';
+import 'package:logger/logger.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../core/di/injection.dart';
 
 @lazySingleton
 class AuthRemoteDatasource {
   final SupabaseClient _client;
 
-  AuthRemoteDatasource([SupabaseClient? client])
-    : _client = client ?? Supabase.instance.client;
+  AuthRemoteDatasource(this._client);
+
+  final logger = getIt<Logger>();
 
   void initAuthListener() {
     late final StreamSubscription<AuthState> sub;
@@ -40,11 +45,15 @@ class AuthRemoteDatasource {
         password: password,
       );
       if (response.user == null) {
-        throw Exception('Failed to sign in - no user returned');
+        throw Exception(tr('errorSignInNoUser'));
       }
       return response;
-    } on AuthException catch (e) {
-      throw Exception(e.message);
+    } on AuthException catch (e, stack) {
+      logger.e('signInWithEmail error', error: e, stackTrace: stack);
+      throw Exception(tr('errorSignIn', args: [e.message]));
+    } catch (e, stack) {
+      logger.e('signInWithEmail error', error: e, stackTrace: stack);
+      throw Exception(tr('errorSignInGeneric'));
     }
   }
 
@@ -60,16 +69,18 @@ class AuthRemoteDatasource {
         data: {'full_name': fullName},
       );
       if (response.user == null) {
-        throw Exception('Failed to sign up - no user returned');
+        throw Exception(tr('errorSignUpNoUser'));
       }
       return response;
-    } on AuthException catch (e) {
+    } on AuthException catch (e, stack) {
+      logger.e('signUpWithEmail error', error: e, stackTrace: stack);
       if (e.message.toLowerCase().contains('already registered')) {
-        throw Exception(
-          'This email is already registered. Please use a different email or try logging in.',
-        );
+        throw Exception(tr('errorEmailRegistered'));
       }
-      throw Exception(e.message);
+      throw Exception(tr('errorSignUp', args: [e.message]));
+    } catch (e, stack) {
+      logger.e('signUpWithEmail error', error: e, stackTrace: stack);
+      throw Exception(tr('errorSignUpGeneric'));
     }
   }
 
@@ -81,12 +92,12 @@ class AuthRemoteDatasource {
     );
     try {
       final googleUser = await googleSignIn.signIn();
-      if (googleUser == null) throw Exception('Google sign-in was cancelled');
+      if (googleUser == null) throw Exception(tr('errorGoogleSignInCancelled'));
       final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken;
       final accessToken = googleAuth.accessToken;
       if (idToken == null || accessToken == null) {
-        throw Exception('Failed to get Google authentication tokens');
+        throw Exception(tr('errorGoogleToken'));
       }
       final response = await _client.auth.signInWithIdToken(
         provider: OAuthProvider.google,
@@ -94,134 +105,169 @@ class AuthRemoteDatasource {
         accessToken: accessToken,
       );
       if (response.user == null) {
-        throw Exception('Failed to sign in with Google - no user returned');
+        throw Exception(tr('errorGoogleSignInNoUser'));
       }
       return response;
-    } on PlatformException {
-      throw Exception(
-        'Không thể đăng nhập bằng Google. Vui lòng kiểm tra cấu hình ứng dụng hoặc thử lại sau.',
+    } on PlatformException catch (e, stack) {
+      logger.e(
+        'signInWithGoogleNative PlatformException',
+        error: e,
+        stackTrace: stack,
       );
-    } on AuthException catch (e) {
-      throw Exception(e.message);
-    } catch (e) {
-      throw Exception(
-        'Đã xảy ra lỗi khi đăng nhập bằng Google. Vui lòng thử lại.',
+      throw Exception(tr('errorGoogleSignInPlatform'));
+    } on AuthException catch (e, stack) {
+      logger.e(
+        'signInWithGoogleNative AuthException',
+        error: e,
+        stackTrace: stack,
       );
+      throw Exception(tr('errorGoogleSignIn', args: [e.message]));
+    } catch (e, stack) {
+      logger.e('signInWithGoogleNative error', error: e, stackTrace: stack);
+      throw Exception(tr('errorGoogleSignInGeneric'));
     }
   }
 
   Future<void> signOut() async {
-    await _client.auth.signOut();
+    try {
+      await _client.auth.signOut();
+    } catch (e, stack) {
+      logger.e('signOut error', error: e, stackTrace: stack);
+      throw Exception(tr('errorSignOut'));
+    }
   }
 
   Future<User?> getCurrentUser() async {
-    return _client.auth.currentUser;
+    try {
+      return _client.auth.currentUser;
+    } catch (e, stack) {
+      logger.e('getCurrentUser error', error: e, stackTrace: stack);
+      throw Exception(tr('errorGetCurrentUser'));
+    }
   }
 
   Future<Map<String, dynamic>?> getUserProfile() async {
-    final user = _client.auth.currentUser;
-    if (user == null) throw Exception('No user is currently signed in');
-
-    final response =
-        await _client.from('users').select('*').eq('id', user.id).single();
-
-    return response as Map<String, dynamic>?;
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) throw Exception(tr('errorNoUserSignedIn'));
+      final response =
+          await _client.from('users').select('*').eq('id', user.id).single();
+      return response as Map<String, dynamic>?;
+    } catch (e, stack) {
+      logger.e('getUserProfile error', error: e, stackTrace: stack);
+      throw Exception(tr('errorGetUserProfile'));
+    }
   }
 
   Future<User> updateDisplayName(String fullName) async {
-    final user = _client.auth.currentUser;
-    if (user == null) throw Exception('No user is currently signed in');
-
-    // Chỉ cập nhật bảng users, không cập nhật auth metadata
-    await _client.from('users').upsert({
-      'id': user.id,
-      'full_name': fullName,
-    }, onConflict: 'id');
-
-    // Trả về user hiện tại (không cần refresh vì auth metadata không thay đổi)
-    return user;
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) throw Exception(tr('errorNoUserSignedIn'));
+      await _client.from('users').upsert({
+        'id': user.id,
+        'full_name': fullName,
+      }, onConflict: 'id');
+      return user;
+    } catch (e, stack) {
+      logger.e('updateDisplayName error', error: e, stackTrace: stack);
+      throw Exception(tr('errorUpdateDisplayName'));
+    }
   }
 
   Future<User> updateProfileImage(File file) async {
-    final user = _client.auth.currentUser;
-    if (user == null) throw Exception('No user is currently signed in');
+    try {
+      final user = _client.auth.currentUser;
+      if (user == null) throw Exception(tr('errorNoUserSignedIn'));
+      final bytes = await file.readAsBytes();
+      final ext = file.path.split('.').last;
+      final storagePath = 'avatars/${user.id}.$ext';
 
-    final bytes = await file.readAsBytes();
-    final ext = file.path.split('.').last;
-    final storagePath = 'avatars/${user.id}.$ext';
+      await _client.storage
+          .from('avatars')
+          .updateBinary(
+            storagePath,
+            bytes,
+            fileOptions: FileOptions(upsert: true),
+          );
 
-    await _client.storage
-        .from('avatars')
-        .updateBinary(
-          storagePath,
-          bytes,
-          fileOptions: FileOptions(upsert: true),
-        );
+      final url = await _client.storage
+          .from('avatars')
+          .createSignedUrl(storagePath, 60 * 60);
 
-    final url = await _client.storage
-        .from('avatars')
-        .createSignedUrl(storagePath, 60 * 60);
+      final response = await _client.auth.updateUser(
+        UserAttributes(data: {'avatar_url': url, ...user.userMetadata ?? {}}),
+      );
 
-    /*final url = _client.storage.from('avatars').getPublicUrl(storagePath);*/
-
-    final response = await _client.auth.updateUser(
-      UserAttributes(data: {'avatar_url': url, ...user.userMetadata ?? {}}),
-    );
-
-    final updatedUser = response.user;
-    if (updatedUser == null) {
-      throw Exception('Failed to update profile image - no user returned');
+      final updatedUser = response.user;
+      if (updatedUser == null) {
+        throw Exception(tr('errorUpdateProfileImageNoUser'));
+      }
+      return updatedUser;
+    } catch (e, stack) {
+      logger.e('updateProfileImage error', error: e, stackTrace: stack);
+      throw Exception(tr('errorUpdateProfileImage'));
     }
-    return updatedUser;
   }
 
   Future<void> changePassword(String oldPassword, String newPassword) async {
-    final user = _client.auth.currentUser;
-    if (user == null) throw Exception('No user is currently signed in');
-
-    // Xác thực lại mật khẩu cũ
-    final email = user.email;
-    if (email == null) throw Exception('No email found for current user');
     try {
-      final signInRes = await _client.auth.signInWithPassword(
-        email: email,
-        password: oldPassword,
-      );
-      if (signInRes.user == null) {
-        throw Exception('Old password is incorrect');
+      final user = _client.auth.currentUser;
+      if (user == null) throw Exception(tr('errorNoUserSignedIn'));
+      final email = user.email;
+      if (email == null) throw Exception(tr('errorNoEmailForUser'));
+      try {
+        final signInRes = await _client.auth.signInWithPassword(
+          email: email,
+          password: oldPassword,
+        );
+        if (signInRes.user == null) {
+          throw Exception(tr('errorOldPasswordIncorrect'));
+        }
+      } on AuthException {
+        throw Exception(tr('errorOldPasswordIncorrect'));
       }
-    } on AuthException {
-      throw Exception('Old password is incorrect');
+      await _client.auth.updateUser(UserAttributes(password: newPassword));
+    } catch (e, stack) {
+      logger.e('changePassword error', error: e, stackTrace: stack);
+      throw Exception(tr('errorChangePassword'));
     }
-
-    // Đổi mật khẩu nếu xác thực thành công
-    await _client.auth.updateUser(UserAttributes(password: newPassword));
   }
 
   Future<void> verifyEmailOtp({
     required String email,
     required String otp,
   }) async {
-    final response = await _client.auth.verifyOTP(
-      type: OtpType.email,
-      email: email,
-      token: otp,
-    );
-    if (response.user == null && response.session == null) {
-      throw Exception('Failed to verify OTP - no user or session returned');
+    try {
+      final response = await _client.auth.verifyOTP(
+        type: OtpType.email,
+        email: email,
+        token: otp,
+      );
+      if (response.user == null && response.session == null) {
+        throw Exception(tr('errorVerifyOtpNoUser'));
+      }
+    } catch (e, stack) {
+      logger.e('verifyEmailOtp error', error: e, stackTrace: stack);
+      throw Exception(tr('errorVerifyOtp'));
     }
   }
 
   Future<void> requestPasswordResetOtp({required String email}) async {
     try {
       await _client.auth.resetPasswordForEmail(email);
-    } on AuthException catch (e) {
+    } on AuthException catch (e, stack) {
+      logger.e(
+        'requestPasswordResetOtp AuthException',
+        error: e,
+        stackTrace: stack,
+      );
       if (e.code == 'user_not_found') {
-        throw Exception(
-          'This email is not registered. Please use a different email.',
-        );
+        throw Exception(tr('errorEmailNotRegistered'));
       }
-      throw Exception(e.message);
+      throw Exception(tr('errorRequestResetOtp', args: [e.message]));
+    } catch (e, stack) {
+      logger.e('requestPasswordResetOtp error', error: e, stackTrace: stack);
+      throw Exception(tr('errorRequestResetOtpGeneric'));
     }
   }
 
@@ -237,25 +283,37 @@ class AuthRemoteDatasource {
         type: OtpType.recovery,
       );
       if (response.user == null) {
-        throw Exception('Failed to verify OTP - no user returned');
+        throw Exception(tr('errorVerifyOtpNoUser'));
       }
-
       await _client.auth.updateUser(UserAttributes(password: newPassword));
-    } on AuthException catch (e) {
-      throw Exception(e.message);
+    } on AuthException catch (e, stack) {
+      logger.e(
+        'resetPasswordWithOtp AuthException',
+        error: e,
+        stackTrace: stack,
+      );
+      throw Exception(tr('errorResetPassword', args: [e.message]));
+    } catch (e, stack) {
+      logger.e('resetPasswordWithOtp error', error: e, stackTrace: stack);
+      throw Exception(tr('errorResetPasswordGeneric'));
     }
   }
 
   Future<String?> getAccessToken() async {
-    final session = _client.auth.currentSession;
-    if (session == null) {
-      return null;
+    try {
+      final session = _client.auth.currentSession;
+      if (session == null) {
+        return null;
+      }
+      if (session.isExpired) {
+        final res = await _client.auth.refreshSession();
+        return res.session?.accessToken;
+      }
+      return session.accessToken;
+    } catch (e, stack) {
+      logger.e('getAccessToken error', error: e, stackTrace: stack);
+      throw Exception(tr('errorGetAccessToken'));
     }
-    if (session.isExpired) {
-      final res = await _client.auth.refreshSession();
-      return res.session?.accessToken;
-    }
-    return session.accessToken;
   }
 
   Future<void> resendEmailOtp({
@@ -268,8 +326,12 @@ class AuthRemoteDatasource {
       } else {
         await _client.auth.resend(type: OtpType.email, email: email);
       }
-    } on AuthException catch (e) {
-      throw Exception(e.message);
+    } on AuthException catch (e, stack) {
+      logger.e('resendEmailOtp AuthException', error: e, stackTrace: stack);
+      throw Exception(tr('errorResendOtp', args: [e.message]));
+    } catch (e, stack) {
+      logger.e('resendEmailOtp error', error: e, stackTrace: stack);
+      throw Exception(tr('errorResendOtpGeneric'));
     }
   }
 }

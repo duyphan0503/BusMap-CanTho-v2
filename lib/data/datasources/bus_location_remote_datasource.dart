@@ -3,12 +3,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../model/bus_location.dart';
 
-@lazySingleton
+@injectable
 class BusLocationRemoteDatasource {
   final SupabaseClient _client;
 
-  BusLocationRemoteDatasource([SupabaseClient? client])
-      : _client = client ?? Supabase.instance.client;
+  BusLocationRemoteDatasource(this._client);
 
   Future<List<BusLocation>> getBusLocationsByRouteId(String routeId) async {
     try {
@@ -16,7 +15,7 @@ class BusLocationRemoteDatasource {
           .from('bus_locations')
           .select()
           .eq('route_id', routeId);
-      
+
       return response.map((data) => BusLocation.fromJson(data)).toList();
     } catch (e) {
       throw Exception('Failed to load bus locations: $e');
@@ -33,9 +32,7 @@ class BusLocationRemoteDatasource {
 
   Future<void> updateBusLocation(BusLocation busLocation) async {
     try {
-      await _client
-          .from('bus_locations')
-          .upsert(busLocation.toJson());
+      await _client.from('bus_locations').upsert(busLocation.toJson());
     } catch (e) {
       throw Exception('Failed to update bus location: $e');
     }

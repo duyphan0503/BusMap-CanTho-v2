@@ -131,9 +131,17 @@ class Bus {
     if (progress >= 1.0) {
       fromIndex = toIndex;
       // Nếu tới cuối tuyến thì quay đầu
-      if ((direction == 1 && fromIndex == stops.length - 1) ||
+      /*if ((direction == 1 && fromIndex == stops.length - 1) ||
           (direction == -1 && fromIndex == 0)) {
         direction *= -1;
+      }*/
+      // Tạm thời không cho xe quay đầu: nếu đến cuối tuyến thì dừng lại ở đó
+      if ((direction == 1 && fromIndex == stops.length - 1) ||
+          (direction == -1 && fromIndex == 0)) {
+        // Không đổi hướng, không cập nhật toIndex, giữ nguyên vị trí cuối
+        progress = 0;
+        pauseAtStop = 3 + random.nextInt(12); // Dừng lại 3-15s ở trạm
+        return stops[fromIndex];
       }
       toIndex = fromIndex + direction;
       if (toIndex < 0) toIndex = 1;
@@ -211,36 +219,67 @@ Future<void> main() async {
   try {
     // Định nghĩa các tuyến và số lượng xe mỗi tuyến
     final routes = <String, int>{
-      'route_01-03': 3,
-      'route_05': 1,
-      'route_06': 1,
-      'route_07': 1,
-      'route_08': 1,
-      'route_09': 1,
-      'route_11': 1,
-      'route_14': 1,
+      'route_01-03': 2,
+      'route_05': 2,
+      'route_06': 2,
+      'route_07': 2,
+      'route_08': 2,
+      'route_09': 2,
+      'route_11': 2,
+      'route_14': 2,
       // Thêm tuyến nếu muốn...
     };
 
     // Khởi tạo nhiều xe bus (nhiều tuyến song song)
     final List<Bus> buses = [];
     for (final entry in routes.entries) {
-      final stops = await getRouteStops(entry.key);
-      for (int i = 0; i < entry.value; i++) {
-        final dir = random.nextBool() ? 1 : -1;
-        final index = dir == 1 ? 0 : stops.length - 1;
-        final next = index + dir;
+      final stopsForward = await getRouteStops(entry.key, direction: 0);
+      final stopsReverse = await getRouteStops(entry.key, direction: 1);
+      if (entry.value == 2) {
+        // Outbound bus
         buses.add(
           Bus(
-            vehicleId: 'bus_${entry.key}_$i',
+            vehicleId: 'bus_${entry.key}_0_outbound',
             routeId: entry.key,
-            stops: stops,
-            fromIndex: index,
-            toIndex: next,
-            direction: dir,
-            progress: random.nextDouble(),
+            stops: stopsForward,
+            fromIndex: 0,
+            toIndex: 1,
+            direction: 1, // forward
+            progress: 0, // always start at beginning
           ),
         );
+        // Inbound bus
+        buses.add(
+          Bus(
+            vehicleId: 'bus_${entry.key}_1_inbound',
+            routeId: entry.key,
+            stops: stopsReverse,
+            fromIndex: 0,
+            toIndex: 1,
+            direction: 1, // backward
+            progress: 0, // always start at end
+          ),
+        );
+      } else {
+        // For other cases, keep previous logic (random direction)
+        for (int i = 0; i < entry.value; i++) {
+          int dir = random.nextBool() ? 0 : 1;
+          List<Stop> stops = dir == 0 ? stopsForward : stopsReverse;
+          int fromIndex = dir == 0 ? 0 : stops.length - 1;
+          int toIndex = dir == 0 ? 1 : stops.length - 2;
+          String directionLabel = dir == 0 ? 'outbound' : 'inbound';
+          buses.add(
+            Bus(
+              vehicleId: 'bus_${entry.key}_$i"+"_$directionLabel',
+              routeId: entry.key,
+              stops: stops,
+              fromIndex: fromIndex,
+              toIndex: toIndex,
+              direction: dir == 0 ? 1 : -1,
+              progress: random.nextDouble(),
+            ),
+          );
+        }
       }
     }
 

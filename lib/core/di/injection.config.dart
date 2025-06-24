@@ -15,6 +15,7 @@ import 'package:busmapcantho/core/di/supabase_module.dart' as _i1057;
 import 'package:busmapcantho/core/services/bus_realtime_service.dart' as _i290;
 import 'package:busmapcantho/core/services/notification_local_service.dart'
     as _i67;
+import 'package:busmapcantho/core/services/osrm_routing_service.dart' as _i388;
 import 'package:busmapcantho/core/services/osrm_service.dart' as _i1030;
 import 'package:busmapcantho/core/services/places_service.dart' as _i875;
 import 'package:busmapcantho/data/datasources/agency_remote_datasource.dart'
@@ -59,7 +60,6 @@ import 'package:busmapcantho/data/repositories/search_history_repository.dart'
 import 'package:busmapcantho/data/repositories/ticket_repository.dart' as _i988;
 import 'package:busmapcantho/data/repositories/user_favorite_repository.dart'
     as _i335;
-import 'package:busmapcantho/data/services/osrm_routing_service.dart' as _i486;
 import 'package:busmapcantho/domain/repositories/auth_repository.dart' as _i556;
 import 'package:busmapcantho/domain/repositories/notification_repository.dart'
     as _i287;
@@ -133,6 +133,8 @@ import 'package:busmapcantho/domain/usecases/route_stops/get_route_stop_usecase.
     as _i661;
 import 'package:busmapcantho/domain/usecases/route_stops/get_route_stops_as_bus_stops_usecase.dart'
     as _i167;
+import 'package:busmapcantho/domain/usecases/route_stops/get_route_stops_for_route_usecase.dart'
+    as _i613;
 import 'package:busmapcantho/domain/usecases/route_stops/get_route_stops_usecase.dart'
     as _i706;
 import 'package:busmapcantho/domain/usecases/route_stops/get_routes_for_stop_usecase.dart'
@@ -194,17 +196,32 @@ extension GetItInjectableX on _i174.GetIt {
       () => notificationModule.notificationLocalService,
     );
     gh.lazySingleton<_i454.SupabaseClient>(() => registerModule.supabaseClient);
-    gh.lazySingleton<_i848.AgencyRemoteDatasource>(
+    gh.lazySingleton<_i290.BusRealtimeService>(
+      () => _i290.BusRealtimeService(gh<_i454.SupabaseClient>()),
+    );
+    gh.lazySingleton<_i388.OsrmRoutingService>(
+      () => _i388.OsrmRoutingService(gh<_i974.Logger>()),
+    );
+    gh.factory<_i848.AgencyRemoteDatasource>(
       () => _i848.AgencyRemoteDatasource(gh<_i454.SupabaseClient>()),
+    );
+    gh.factory<_i662.BusLocationRemoteDatasource>(
+      () => _i662.BusLocationRemoteDatasource(gh<_i454.SupabaseClient>()),
+    );
+    gh.factory<_i628.BusRouteRemoteDatasource>(
+      () => _i628.BusRouteRemoteDatasource(gh<_i454.SupabaseClient>()),
+    );
+    gh.factory<_i649.SearchHistoryRemoteDatasource>(
+      () => _i649.SearchHistoryRemoteDatasource(gh<_i454.SupabaseClient>()),
+    );
+    gh.factory<_i366.TicketRemoteDatasource>(
+      () => _i366.TicketRemoteDatasource(gh<_i454.SupabaseClient>()),
+    );
+    gh.factory<_i761.UserFavoriteRemoteDatasource>(
+      () => _i761.UserFavoriteRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i1019.AuthRemoteDatasource>(
       () => _i1019.AuthRemoteDatasource(gh<_i454.SupabaseClient>()),
-    );
-    gh.lazySingleton<_i662.BusLocationRemoteDatasource>(
-      () => _i662.BusLocationRemoteDatasource(gh<_i454.SupabaseClient>()),
-    );
-    gh.lazySingleton<_i628.BusRouteRemoteDatasource>(
-      () => _i628.BusRouteRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
     gh.lazySingleton<_i257.BusStopRemoteDatasource>(
       () => _i257.BusStopRemoteDatasource(gh<_i454.SupabaseClient>()),
@@ -218,87 +235,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i68.RouteStopRemoteDatasource>(
       () => _i68.RouteStopRemoteDatasource(gh<_i454.SupabaseClient>()),
     );
-    gh.lazySingleton<_i649.SearchHistoryRemoteDatasource>(
-      () => _i649.SearchHistoryRemoteDatasource(gh<_i454.SupabaseClient>()),
-    );
-    gh.lazySingleton<_i366.TicketRemoteDatasource>(
-      () => _i366.TicketRemoteDatasource(gh<_i454.SupabaseClient>()),
-    );
-    gh.lazySingleton<_i761.UserFavoriteRemoteDatasource>(
-      () => _i761.UserFavoriteRemoteDatasource(gh<_i454.SupabaseClient>()),
-    );
-    gh.lazySingleton<_i290.BusRealtimeService>(
-      () => _i290.BusRealtimeService(gh<_i454.SupabaseClient>()),
-    );
-    gh.lazySingleton<_i730.RouteStopsRepository>(
-      () => _i730.RouteStopsRepository(gh<_i68.RouteStopRemoteDatasource>()),
-    );
-    gh.lazySingleton<_i486.OsrmRoutingService>(
-      () => _i486.OsrmRoutingService(gh<_i974.Logger>()),
-    );
-    gh.lazySingleton<_i335.UserFavoriteRepository>(
-      () => _i335.UserFavoriteRepository(
-        gh<_i761.UserFavoriteRemoteDatasource>(),
-      ),
-    );
-    gh.lazySingleton<_i287.NotificationRepository>(
-      () => _i590.NotificationRepositoryImpl(
-        gh<_i962.NotificationRemoteDatasource>(),
-      ),
-    );
-    gh.lazySingleton<_i16.BusStopRepository>(
-      () => _i16.BusStopRepository(
-        gh<_i257.BusStopRemoteDatasource>(),
-        gh<_i68.RouteStopRemoteDatasource>(),
-      ),
-    );
     gh.lazySingleton<_i530.BusLocationRepository>(
       () =>
           _i530.BusLocationRepository(gh<_i662.BusLocationRemoteDatasource>()),
     );
-    gh.factory<_i242.RemoveFavoriteUseCase>(
-      () => _i242.RemoveFavoriteUseCase(gh<_i335.UserFavoriteRepository>()),
-    );
     gh.lazySingleton<_i556.AuthRepository>(
       () => _i736.AuthRepositoryImpl(gh<_i1019.AuthRemoteDatasource>()),
-    );
-    gh.factory<_i479.GetUserNotificationsUseCase>(
-      () =>
-          _i479.GetUserNotificationsUseCase(gh<_i287.NotificationRepository>()),
     );
     gh.lazySingleton<_i101.SearchHistoryRepository>(
       () => _i101.SearchHistoryRepository(
         gh<_i649.SearchHistoryRemoteDatasource>(),
       ),
-    );
-    gh.factory<_i950.GetAllBusStopsUseCase>(
-      () => _i950.GetAllBusStopsUseCase(gh<_i16.BusStopRepository>()),
-    );
-    gh.factory<_i60.GetBusStopByIdUseCase>(
-      () => _i60.GetBusStopByIdUseCase(gh<_i16.BusStopRepository>()),
-    );
-    gh.factory<_i32.GetRoutesForStopUseCase>(
-      () => _i32.GetRoutesForStopUseCase(gh<_i730.RouteStopsRepository>()),
-    );
-    gh.factory<_i167.GetRouteStopsAsBusStopsUseCase>(
-      () => _i167.GetRouteStopsAsBusStopsUseCase(
-        gh<_i730.RouteStopsRepository>(),
-      ),
-    );
-    gh.factory<_i706.GetRouteStopsUseCase>(
-      () => _i706.GetRouteStopsUseCase(gh<_i730.RouteStopsRepository>()),
-    );
-    gh.factory<_i661.GetRouteStopUseCase>(
-      () => _i661.GetRouteStopUseCase(gh<_i730.RouteStopsRepository>()),
-    );
-    gh.factory<_i770.GetStopSequenceUseCase>(
-      () => _i770.GetStopSequenceUseCase(gh<_i730.RouteStopsRepository>()),
-    );
-    gh.factory<_i119.IsStopOnRouteUseCase>(
-      () => _i119.IsStopOnRouteUseCase(gh<_i730.RouteStopsRepository>()),
-    );
-    gh.factory<_i753.GetNearbyBusStopsUseCase>(
-      () => _i753.GetNearbyBusStopsUseCase(gh<_i16.BusStopRepository>()),
     );
     gh.factory<_i752.DirectionsCubit>(
       () => _i752.DirectionsCubit(gh<_i1030.OsrmService>()),
@@ -315,32 +262,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i120.BusLocationCubit>(
       () => _i120.BusLocationCubit(gh<_i290.BusRealtimeService>()),
     );
-    gh.factory<_i788.DeleteNotificationUseCase>(
-      () => _i788.DeleteNotificationUseCase(gh<_i287.NotificationRepository>()),
-    );
     gh.lazySingleton<_i988.TicketRepository>(
       () => _i988.TicketRepository(gh<_i366.TicketRemoteDatasource>()),
     );
-    gh.factory<_i840.StopCubit>(
-      () => _i840.StopCubit(
-        gh<_i753.GetNearbyBusStopsUseCase>(),
-        gh<_i950.GetAllBusStopsUseCase>(),
-      ),
-    );
     gh.factory<_i111.SearchBusRoutesUseCase>(
       () => _i111.SearchBusRoutesUseCase(gh<_i705.BusRouteRepository>()),
-    );
-    gh.factory<_i1.AddFavoriteRouteUseCase>(
-      () => _i1.AddFavoriteRouteUseCase(gh<_i335.UserFavoriteRepository>()),
-    );
-    gh.factory<_i628.AddFavoriteStopUseCase>(
-      () => _i628.AddFavoriteStopUseCase(gh<_i335.UserFavoriteRepository>()),
-    );
-    gh.factory<_i774.GetFavoriteRoutesUseCase>(
-      () => _i774.GetFavoriteRoutesUseCase(gh<_i335.UserFavoriteRepository>()),
-    );
-    gh.factory<_i302.GetFavoriteStopsUseCase>(
-      () => _i302.GetFavoriteStopsUseCase(gh<_i335.UserFavoriteRepository>()),
     );
     gh.factory<_i1049.GetAllBusRoutesUseCase>(
       () => _i1049.GetAllBusRoutesUseCase(gh<_i705.BusRouteRepository>()),
@@ -351,24 +277,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i909.GetUserProfileUseCase>(
       () => _i909.GetUserProfileUseCase(gh<_i556.AuthRepository>()),
     );
-    gh.factory<_i907.SearchCubit>(
-      () => _i907.SearchCubit(
-        gh<_i705.BusRouteRepository>(),
-        gh<_i16.BusStopRepository>(),
-        gh<_i101.SearchHistoryRepository>(),
-        gh<_i875.PlacesService>(),
+    gh.lazySingleton<_i730.RouteStopsRepository>(
+      () => _i730.RouteStopsRepository(gh<_i68.RouteStopRemoteDatasource>()),
+    );
+    gh.factory<_i335.UserFavoriteRepository>(
+      () => _i335.UserFavoriteRepository(
+        gh<_i761.UserFavoriteRemoteDatasource>(),
       ),
     );
-    gh.factory<_i166.FavoritesCubit>(
-      () => _i166.FavoritesCubit(
-        gh<_i774.GetFavoriteRoutesUseCase>(),
-        gh<_i302.GetFavoriteStopsUseCase>(),
-        gh<_i1.AddFavoriteRouteUseCase>(),
-        gh<_i628.AddFavoriteStopUseCase>(),
-        gh<_i242.RemoveFavoriteUseCase>(),
-        gh<_i422.GetBusRouteByIdUseCase>(),
-        gh<_i60.GetBusStopByIdUseCase>(),
-      ),
+    gh.factory<_i613.GetRouteStopsForRouteUseCase>(
+      () =>
+          _i613.GetRouteStopsForRouteUseCase(gh<_i730.RouteStopsRepository>()),
     );
     gh.factory<_i171.MonitorStopUseCase>(
       () => _i171.MonitorStopUseCase(
@@ -385,8 +304,22 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i943.ResendEmailOtpUseCase>(
       () => _i943.ResendEmailOtpUseCase(gh<_i556.AuthRepository>()),
     );
+    gh.lazySingleton<_i287.NotificationRepository>(
+      () => _i590.NotificationRepositoryImpl(
+        gh<_i962.NotificationRemoteDatasource>(),
+      ),
+    );
+    gh.lazySingleton<_i16.BusStopRepository>(
+      () => _i16.BusStopRepository(
+        gh<_i257.BusStopRemoteDatasource>(),
+        gh<_i68.RouteStopRemoteDatasource>(),
+      ),
+    );
     gh.factory<_i994.UpdateFeedbackUseCase>(
       () => _i994.UpdateFeedbackUseCase(gh<_i566.FeedbackRepository>()),
+    );
+    gh.factory<_i242.RemoveFavoriteUseCase>(
+      () => _i242.RemoveFavoriteUseCase(gh<_i335.UserFavoriteRepository>()),
     );
     gh.factory<_i40.GetCurrentUserFeedbackForRouteUseCase>(
       () => _i40.GetCurrentUserFeedbackForRouteUseCase(
@@ -434,34 +367,54 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i725.VerifyEmailOtpUseCase>(
       () => _i725.VerifyEmailOtpUseCase(gh<_i556.AuthRepository>()),
     );
-    gh.lazySingleton<_i67.GetRouteGeometryUseCase>(
-      () => _i67.GetRouteGeometryUseCase(
-        gh<_i486.OsrmRoutingService>(),
+    gh.factory<_i479.GetUserNotificationsUseCase>(
+      () =>
+          _i479.GetUserNotificationsUseCase(gh<_i287.NotificationRepository>()),
+    );
+    gh.factory<_i950.GetAllBusStopsUseCase>(
+      () => _i950.GetAllBusStopsUseCase(gh<_i16.BusStopRepository>()),
+    );
+    gh.factory<_i60.GetBusStopByIdUseCase>(
+      () => _i60.GetBusStopByIdUseCase(gh<_i16.BusStopRepository>()),
+    );
+    gh.factory<_i32.GetRoutesForStopUseCase>(
+      () => _i32.GetRoutesForStopUseCase(gh<_i730.RouteStopsRepository>()),
+    );
+    gh.factory<_i167.GetRouteStopsAsBusStopsUseCase>(
+      () => _i167.GetRouteStopsAsBusStopsUseCase(
+        gh<_i730.RouteStopsRepository>(),
+      ),
+    );
+    gh.factory<_i706.GetRouteStopsUseCase>(
+      () => _i706.GetRouteStopsUseCase(gh<_i730.RouteStopsRepository>()),
+    );
+    gh.factory<_i661.GetRouteStopUseCase>(
+      () => _i661.GetRouteStopUseCase(gh<_i730.RouteStopsRepository>()),
+    );
+    gh.factory<_i770.GetStopSequenceUseCase>(
+      () => _i770.GetStopSequenceUseCase(gh<_i730.RouteStopsRepository>()),
+    );
+    gh.factory<_i119.IsStopOnRouteUseCase>(
+      () => _i119.IsStopOnRouteUseCase(gh<_i730.RouteStopsRepository>()),
+    );
+    gh.factory<_i753.GetNearbyBusStopsUseCase>(
+      () => _i753.GetNearbyBusStopsUseCase(gh<_i16.BusStopRepository>()),
+    );
+    gh.factory<_i212.RoutesCubit>(
+      () => _i212.RoutesCubit(
+        gh<_i1049.GetAllBusRoutesUseCase>(),
         gh<_i167.GetRouteStopsAsBusStopsUseCase>(),
+        gh<_i111.SearchBusRoutesUseCase>(),
         gh<_i974.Logger>(),
       ),
     );
-    gh.factory<_i641.RouteSuggestionCubit>(
-      () => _i641.RouteSuggestionCubit(
-        gh<_i1049.GetAllBusRoutesUseCase>(),
-        gh<_i290.BusRealtimeService>(),
+    gh.factory<_i788.DeleteNotificationUseCase>(
+      () => _i788.DeleteNotificationUseCase(gh<_i287.NotificationRepository>()),
+    );
+    gh.factory<_i840.StopCubit>(
+      () => _i840.StopCubit(
         gh<_i753.GetNearbyBusStopsUseCase>(),
-        gh<_i167.GetRouteStopsAsBusStopsUseCase>(),
-      ),
-    );
-    gh.factory<_i129.NotificationCubit>(
-      () => _i129.NotificationCubit(
-        gh<_i171.MonitorStopUseCase>(),
-        gh<_i344.ReportVehicleArrivalUseCase>(),
-        gh<_i479.GetUserNotificationsUseCase>(),
-        gh<_i788.DeleteNotificationUseCase>(),
-      ),
-    );
-    gh.factory<_i655.RouteStopsCubit>(
-      () => _i655.RouteStopsCubit(
-        gh<_i32.GetRoutesForStopUseCase>(),
-        gh<_i422.GetBusRouteByIdUseCase>(),
-        gh<_i290.BusRealtimeService>(),
+        gh<_i950.GetAllBusStopsUseCase>(),
       ),
     );
     gh.factory<_i601.AccountCubit>(
@@ -490,6 +443,18 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i943.ResendEmailOtpUseCase>(),
       ),
     );
+    gh.factory<_i1.AddFavoriteRouteUseCase>(
+      () => _i1.AddFavoriteRouteUseCase(gh<_i335.UserFavoriteRepository>()),
+    );
+    gh.factory<_i628.AddFavoriteStopUseCase>(
+      () => _i628.AddFavoriteStopUseCase(gh<_i335.UserFavoriteRepository>()),
+    );
+    gh.factory<_i774.GetFavoriteRoutesUseCase>(
+      () => _i774.GetFavoriteRoutesUseCase(gh<_i335.UserFavoriteRepository>()),
+    );
+    gh.factory<_i302.GetFavoriteStopsUseCase>(
+      () => _i302.GetFavoriteStopsUseCase(gh<_i335.UserFavoriteRepository>()),
+    );
     gh.factory<_i122.AuthCubit>(
       () => _i122.AuthCubit(
         gh<_i264.GetCurrentUserUseCase>(),
@@ -499,20 +464,61 @@ extension GetItInjectableX on _i174.GetIt {
         gh<_i284.SignOutUseCase>(),
       ),
     );
+    gh.lazySingleton<_i67.GetRouteGeometryUseCase>(
+      () => _i67.GetRouteGeometryUseCase(
+        gh<_i388.OsrmRoutingService>(),
+        gh<_i167.GetRouteStopsAsBusStopsUseCase>(),
+        gh<_i974.Logger>(),
+      ),
+    );
     gh.factory<_i600.PasswordCubit>(
       () => _i600.PasswordCubit(
         gh<_i405.RequestPasswordResetOtpUseCase>(),
         gh<_i81.ResetPasswordWithOtpUseCase>(),
       ),
     );
-    gh.factory<_i212.RoutesCubit>(
-      () => _i212.RoutesCubit(
-        gh<_i1049.GetAllBusRoutesUseCase>(),
-        gh<_i167.GetRouteStopsAsBusStopsUseCase>(),
-        gh<_i111.SearchBusRoutesUseCase>(),
+    gh.factory<_i907.SearchCubit>(
+      () => _i907.SearchCubit(
+        gh<_i705.BusRouteRepository>(),
+        gh<_i16.BusStopRepository>(),
+        gh<_i101.SearchHistoryRepository>(),
+        gh<_i875.PlacesService>(),
+      ),
+    );
+    gh.factory<_i166.FavoritesCubit>(
+      () => _i166.FavoritesCubit(
         gh<_i774.GetFavoriteRoutesUseCase>(),
+        gh<_i302.GetFavoriteStopsUseCase>(),
+        gh<_i1.AddFavoriteRouteUseCase>(),
+        gh<_i628.AddFavoriteStopUseCase>(),
+        gh<_i242.RemoveFavoriteUseCase>(),
+        gh<_i422.GetBusRouteByIdUseCase>(),
+        gh<_i60.GetBusStopByIdUseCase>(),
+      ),
+    );
+    gh.factory<_i641.RouteSuggestionCubit>(
+      () => _i641.RouteSuggestionCubit(
+        gh<_i1049.GetAllBusRoutesUseCase>(),
+        gh<_i290.BusRealtimeService>(),
+        gh<_i753.GetNearbyBusStopsUseCase>(),
+        gh<_i167.GetRouteStopsAsBusStopsUseCase>(),
+      ),
+    );
+    gh.factory<_i129.NotificationCubit>(
+      () => _i129.NotificationCubit(
+        gh<_i171.MonitorStopUseCase>(),
+        gh<_i344.ReportVehicleArrivalUseCase>(),
+        gh<_i479.GetUserNotificationsUseCase>(),
+        gh<_i788.DeleteNotificationUseCase>(),
+      ),
+    );
+    gh.factory<_i655.RouteStopsCubit>(
+      () => _i655.RouteStopsCubit.withGetRouteStopsUseCase(
+        gh<_i32.GetRoutesForStopUseCase>(),
+        gh<_i422.GetBusRouteByIdUseCase>(),
+        gh<_i290.BusRealtimeService>(),
         gh<_i67.GetRouteGeometryUseCase>(),
-        gh<_i974.Logger>(),
+        gh<_i613.GetRouteStopsForRouteUseCase>(),
       ),
     );
     return this;

@@ -15,9 +15,20 @@ class RouteStopsRepository {
     return _remoteDatasource.getRouteStops(routeId, direction);
   }
 
+  /// Get all route stops for a route (all directions)
+  Future<List<RouteStop>> getRouteStopsForRoute(String routeId) {
+    return _remoteDatasource.getRouteStopsForRoute(routeId);
+  }
+
   /// Get all bus stops for a specific route and direction, ordered by sequence
-  Future<List<BusStop>> getRouteStopsAsBusStops(String routeId, int direction) async {
-    final routeStops = await _remoteDatasource.getRouteStops(routeId, direction);
+  Future<List<BusStop>> getRouteStopsAsBusStops(
+    String routeId,
+    int direction,
+  ) async {
+    final routeStops = await _remoteDatasource.getRouteStops(
+      routeId,
+      direction,
+    );
     return routeStops.map((routeStop) => routeStop.stop).toList();
   }
 
@@ -27,19 +38,39 @@ class RouteStopsRepository {
   }
 
   /// Check if a stop is part of a specific route and direction
-  Future<bool> isStopOnRoute(String routeId, String stopId, int direction) async {
-    final routeStop = await _remoteDatasource.getRouteStop(routeId, stopId, direction);
+  Future<bool> isStopOnRoute(
+    String routeId,
+    String stopId,
+    int direction,
+  ) async {
+    final routeStop = await _remoteDatasource.getRouteStop(
+      routeId,
+      stopId,
+      direction,
+    );
     return routeStop != null;
   }
 
   /// Get a specific route stop by route, stop, and direction
-  Future<RouteStop?> getRouteStop(String routeId, String stopId, int direction) {
+  Future<RouteStop?> getRouteStop(
+    String routeId,
+    String stopId,
+    int direction,
+  ) {
     return _remoteDatasource.getRouteStop(routeId, stopId, direction);
   }
 
   /// Get the sequence number of a stop within a route
-  Future<int?> getStopSequence(String routeId, String stopId, int direction) async {
-    final routeStop = await _remoteDatasource.getRouteStop(routeId, stopId, direction);
+  Future<int?> getStopSequence(
+    String routeId,
+    String stopId,
+    int direction,
+  ) async {
+    final routeStop = await _remoteDatasource.getRouteStop(
+      routeId,
+      stopId,
+      direction,
+    );
     return routeStop?.sequence;
   }
 }

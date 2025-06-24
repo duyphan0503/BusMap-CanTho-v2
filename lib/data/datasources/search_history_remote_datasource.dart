@@ -3,12 +3,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../model/search_history.dart';
 
-@lazySingleton
+@injectable
 class SearchHistoryRemoteDatasource {
   final SupabaseClient _client;
 
-  SearchHistoryRemoteDatasource([SupabaseClient? client])
-    : _client = client ?? Supabase.instance.client;
+  SearchHistoryRemoteDatasource(this._client);
 
   Future<List<SearchHistory>> getSearchHistory() async {
     try {

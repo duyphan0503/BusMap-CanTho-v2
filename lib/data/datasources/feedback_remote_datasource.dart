@@ -8,8 +8,7 @@ import '../model/feedback.dart';
 class FeedbackRemoteDatasource {
   final SupabaseClient _client;
 
-  FeedbackRemoteDatasource([SupabaseClient? client])
-    : _client = client ?? Supabase.instance.client;
+  FeedbackRemoteDatasource(this._client);
 
   // Generate a feedback ID with format fb_XXXX
   Future<String> _generateFeedbackId() async {

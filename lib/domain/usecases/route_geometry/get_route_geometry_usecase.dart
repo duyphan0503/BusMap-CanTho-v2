@@ -1,4 +1,4 @@
-import 'package:busmapcantho/data/services/osrm_routing_service.dart';
+import 'package:busmapcantho/core/services/osrm_routing_service.dart';
 import 'package:busmapcantho/domain/usecases/route_stops/get_route_stops_as_bus_stops_usecase.dart';
 import 'package:injectable/injectable.dart';
 import 'package:latlong2/latlong.dart';
@@ -38,7 +38,7 @@ class GetRouteGeometryUseCase {
           stops.map((stop) => LatLng(stop.latitude, stop.longitude)).toList();
 
       // Fetch the route geometry from OSRM
-      final routeGeometry = await _routingService.fetchRouteGeometry(
+      final routeGeometry = await _routingService.fetchReverseRouteGeometry(
         waypoints,
         profile: 'driving', // Use driving profile for buses
       );

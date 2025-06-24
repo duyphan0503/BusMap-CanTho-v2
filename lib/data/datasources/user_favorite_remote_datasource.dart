@@ -3,12 +3,11 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../model/user_favorite.dart';
 
-@lazySingleton
+@injectable
 class UserFavoriteRemoteDatasource {
   final SupabaseClient _client;
 
-  UserFavoriteRemoteDatasource([SupabaseClient? client])
-    : _client = client ?? Supabase.instance.client;
+  UserFavoriteRemoteDatasource(this._client);
 
   Future<List<UserFavorite>> getFavorites({String? type}) async {
     try {

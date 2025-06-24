@@ -17,6 +17,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "7.4.5"
+  animated_stack_widget:
+    dependency: transitive
+    description:
+      name: animated_stack_widget
+      sha256: ce4788dd158768c9d4388354b6fb72600b78e041a37afc4c279c63ecafcb9408
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.4"
   ansicolor:
     dependency: transitive
     description:
@@ -531,6 +539,22 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "10.1.0"
+  flutter_map_marker_cluster_plus:
+    dependency: "direct main"
+    description:
+      name: flutter_map_marker_cluster_plus
+      sha256: cd5c21738e6d241e6423845d19f4f3b95ea334f4d724af9200e1931cdcf1d7be
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.4.2"
+  flutter_map_marker_popup_plus:
+    dependency: transitive
+    description:
+      name: flutter_map_marker_popup_plus
+      sha256: a0c2cde5006f42e29e33fb8bc6d50400a19f574471b372b4e08df46425576d90
+      url: "https://pub.dev"
+    source: hosted
+    version: "7.1.0"
   flutter_map_tile_caching:
     dependency: "direct main"
     description:

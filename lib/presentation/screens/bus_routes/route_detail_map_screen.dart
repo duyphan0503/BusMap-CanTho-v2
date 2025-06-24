@@ -1,19 +1,22 @@
-import 'package:busmapcantho/core/di/injection.dart';
 import 'package:busmapcantho/core/utils/operating_hours_translator.dart'; // Import the translator
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_map/flutter_map.dart' as osm;
+import 'package:geolocator/geolocator.dart';
+import 'package:go_router/go_router.dart';
 import 'package:latlong2/latlong.dart' as osm;
 import 'package:latlong2/latlong.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../core/services/notification_local_service.dart'; // Import dịch vụ thông báo
 import '../../../core/theme/app_colors.dart';
+import '../../../data/model/bus_location.dart';
 import '../../../data/model/bus_route.dart';
 import '../../../data/model/bus_stop.dart';
-import '../../../domain/usecases/bus_routes/get_bus_route_by_id_usecase.dart';
 import '../../cubits/bus_location/bus_location_cubit.dart';
-import '../../cubits/bus_routes/routes_cubit.dart';
+import '../../cubits/route_stops/route_stops_cubit.dart';
+import '../../routes/app_routes.dart';
 import '../../widgets/bus_map_widget.dart';
 import '../../widgets/marquee_text.dart';
 import '../../widgets/review_section.dart';
@@ -50,6 +53,8 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
   bool _notifyDeparture = false;
   final Map<String, String> _busStatuses = {};
 
+  final ScrollController _stopsScrollController = ScrollController();
+
   @override
   void initState() {
     super.initState();
@@ -57,46 +62,62 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
     _loadInitialData();
   }
 
+  // Add a field to store the user's current location
+  osm.LatLng? _userLocation;
+
   Future<void> _loadInitialData() async {
     await _loadStopsAndRoute();
     await _loadNotificationSettings();
     if (!mounted) return;
-    getIt<BusLocationCubit>();
+
     context.read<BusLocationCubit>().subscribe(widget.route.id);
+
+    try {
+      final location = await _getCurrentUserLocation();
+      if (mounted && location != null) {
+        setState(() => _userLocation = location);
+      }
+    } catch (_) {}
+
+    if (!mounted) return;
+    await context.read<RouteStopsCubit>().loadRouteGeometries(widget.route.id);
+  }
+
+  // Helper to get the user's current location (returns null if not available)
+  Future<osm.LatLng?> _getCurrentUserLocation() async {
+    try {
+      final geolocator = await Geolocator.getCurrentPosition();
+      return osm.LatLng(geolocator.latitude, geolocator.longitude);
+    } catch (_) {
+      return null;
+    }
   }
 
   Future<void> _loadStopsAndRoute() async {
     try {
-      final cubit = context.read<RoutesCubit>();
+      final routeStopsCubit = context.read<RouteStopsCubit>();
 
-      // Fetch the route with all its stops
-      final detailedRoute = await getIt<GetBusRouteByIdUseCase>()(
+      // Lấy danh sách RouteStop từ cubit (không dùng usecase trực tiếp)
+      final allStops = await routeStopsCubit.getRouteStopsForRoute(
         widget.route.id,
       );
-      if (!mounted) return;
 
-      final allStops = detailedRoute!.stops;
-
-      // Separate stops by direction
+      // Separate stops by direction and sort by sequence
       final outboundStops =
-          allStops
-              .where((routeStop) => routeStop.direction == 0)
-              .map((routeStop) => routeStop.stop)
-              .toList();
-
+          allStops.where((routeStop) => routeStop.direction == 0).toList()
+            ..sort((a, b) => a.sequence.compareTo(b.sequence));
       final inboundStops =
-          allStops
-              .where((routeStop) => routeStop.direction == 1)
-              .map((routeStop) => routeStop.stop)
-              .toList();
+          allStops.where((routeStop) => routeStop.direction == 1).toList()
+            ..sort((a, b) => a.sequence.compareTo(b.sequence));
 
-      // Load route geometries that follow actual roads
-      await cubit.loadRouteGeometries(widget.route.id);
+      // Map to BusStop
+      final outboundStopsList = outboundStops.map((rs) => rs.stop).toList();
+      final inboundStopsList = inboundStops.map((rs) => rs.stop).toList();
 
       if (!mounted) return;
       setState(() {
-        _outboundStops = outboundStops;
-        _inboundStops = inboundStops;
+        _outboundStops = outboundStopsList;
+        _inboundStops = inboundStopsList;
         _stops = _isOutbound ? _outboundStops : _inboundStops;
         _selectedStop = _stops.isNotEmpty ? _stops.first : null;
         _isLoading = false;
@@ -110,37 +131,27 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
     }
   }
 
-  // Helper to get route points, using geometries if available or falling back to straight lines
+  // Helper to get route points for the selected direction using RouteStopsCubit
   List<List<osm.LatLng>> _getAllRoutePoints() {
-    final cubit = context.read<RoutesCubit>();
-    final geometries = cubit.state.routeGeometryMap[widget.route.id];
-
+    final routeStopsCubit = context.read<RouteStopsCubit>();
     final List<List<osm.LatLng>> allPoints = [];
 
-    // Outbound
-    if (geometries != null &&
-        geometries.containsKey(0) &&
-        geometries[0]!.isNotEmpty) {
-      allPoints.add(
-        geometries[0]!.map((p) => osm.LatLng(p.latitude, p.longitude)).toList(),
-      );
+    if (_isOutbound) {
+      // Outbound
+      if (_outboundStops.length > 1) {
+        // Đảm bảo _outboundStops chỉ chứa stops direction=0, đã sort theo sequence
+        allPoints.add(
+          routeStopsCubit.getRouteGeometryForDirection(0, _outboundStops),
+        );
+      }
     } else {
-      allPoints.add(
-        _outboundStops.map((s) => osm.LatLng(s.latitude, s.longitude)).toList(),
-      );
-    }
-
-    // Inbound
-    if (geometries != null &&
-        geometries.containsKey(1) &&
-        geometries[1]!.isNotEmpty) {
-      allPoints.add(
-        geometries[1]!.map((p) => osm.LatLng(p.latitude, p.longitude)).toList(),
-      );
-    } else {
-      allPoints.add(
-        _inboundStops.map((s) => osm.LatLng(s.latitude, s.longitude)).toList(),
-      );
+      // Inbound
+      if (_inboundStops.length > 1) {
+        // Đảm bảo _inboundStops chỉ chứa stops direction=1, đã sort theo sequence
+        allPoints.add(
+          routeStopsCubit.getRouteGeometryForDirection(1, _inboundStops),
+        );
+      }
     }
 
     return allPoints;
@@ -174,6 +185,15 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
     setState(() => _selectedStop = stop);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _mapController.animateToStop?.call(stop);
+      // Scroll to the selected stop in the stops list
+      final index = _stops.indexWhere((s) => s.id == stop.id);
+      if (index != -1 && _stopsScrollController.hasClients) {
+        _stopsScrollController.animateTo(
+          index * 64.0, // Approximate item height
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeInOut,
+        );
+      }
     });
   }
 
@@ -376,7 +396,13 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
             Icons.directions_bus,
             color: AppColors.textOnPrimary,
           ),
-          onPressed: () {},
+          onPressed: () {
+            if (_selectedStop != null) {
+              context.push(AppRoutes.directions, extra: _selectedStop);
+            } else if (_stops.isNotEmpty) {
+              context.push(AppRoutes.directions, extra: _stops.first);
+            }
+          },
         ),
       ],
     );
@@ -386,29 +412,46 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
     ThemeData theme, {
     required BusLocationState busLocationState,
   }) {
-    final busLocations = busLocationState.busLocations.values.toList();
+    // Lọc busLocations theo direction hiện tại (dựa vào vehicleId)
+    final String directionSuffix = _isOutbound ? '_outbound' : '_inbound';
+    final busLocations =
+        busLocationState.busLocations.values
+            .where((bus) => bus.vehicleId.endsWith(directionSuffix))
+            .toList();
+    // Chỉ hiển thị 1 xe buýt cho mỗi chiều
+    final List<BusLocation> busLocationsForMap =
+        busLocations.isNotEmpty ? [busLocations.first] : <BusLocation>[];
+
+    // Only use stops for the selected direction
+    final allStops = _stops;
+
+    // Get route polyline for the selected direction
+    final allRoutePoints = _getAllRoutePoints();
+    // Since we only show one route at a time, the highlighted direction is always the first in the list (index 0).
+    const selectedDirection = 0;
 
     return Stack(
       children: [
         Positioned.fill(
           child: BusMapWidget(
             key: _mapKey,
-            busStops: _stops,
+            busStops: allStops,
+            // Show stops for the selected direction
             isLoading: _isLoading,
             selectedStop: _selectedStop,
-            userLocation:
-                _stops.isNotEmpty
-                    ? osm.LatLng(_stops.first.latitude, _stops.first.longitude)
-                    : _defaultCenter,
+            userLocation: _userLocation ?? _defaultCenter,
+            // Use user location if available
             onStopSelected: (stop) => setState(() => _selectedStop = stop),
             onClearSelectedStop: () => setState(() => _selectedStop = null),
             refreshStops: () => _loadStopsAndRoute(),
             onCenterUser: () {},
             onDirections: () {},
             onRoutes: (stop) {},
-            allRoutePoints: _getAllRoutePoints(),
-            busLocations: busLocations,
+            allRoutePoints: allRoutePoints,
+            busLocations: busLocationsForMap, // Chỉ truyền 1 xe buýt đúng chiều
             routeScreenMapController: _mapController,
+            // Pass selectedDirection to highlight correct polyline
+            highlightedDirection: selectedDirection,
           ),
         ),
         _buildTopIndicator(theme),
@@ -510,7 +553,8 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
                 fontSize: 13,
                 color: AppColors.primaryDark,
               ),
-              velocity: 40.0, // Adjust speed as needed
+              velocity: 40.0,
+              // Adjust speed as needed
               pauseBetweenLoops: const Duration(seconds: 2),
               initialDelay: const Duration(seconds: 1),
               gapWidth: 75.0, // Adjust gap as needed
@@ -687,8 +731,14 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        for (int i = 0; i < _stops.length; i++)
-          _buildStopItem(i, _stops[i], theme),
+        SizedBox(
+          height: 56.0 * 6, // Show up to 6 stops at once
+          child: ListView.builder(
+            controller: _stopsScrollController,
+            itemCount: _stops.length,
+            itemBuilder: (context, i) => _buildStopItem(i, _stops[i], theme),
+          ),
+        ),
       ],
     );
   }
@@ -849,6 +899,7 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
 // Helper classes for better organization
 class BusMapController {
   void Function(BusStop)? animateToStop;
+  void Function(osm.LatLngBounds)? fitToBounds;
 }
 
 class NotificationSettingsDialog extends StatelessWidget {
