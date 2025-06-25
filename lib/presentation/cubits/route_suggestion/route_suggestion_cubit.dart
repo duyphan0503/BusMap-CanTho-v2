@@ -142,179 +142,285 @@ class RouteSuggestionCubit extends Cubit<RouteSuggestionState> {
     bool isBusActive = false;
 
     if (state.endLatLng != null) {
-      // Chỉ cần có điểm đến để tìm tuyến
       final endLatLng = state.endLatLng!;
+      final int maxSegments = state.maxRoutes;
+      List<Map<String, dynamic>> journeySegments = [];
+      LatLng currentStartPoint = startPointLatLng;
 
-      // 1. Lấy nhiều trạm gần điểm bắt đầu (điểm đã chọn hoặc vị trí hiện tại)
-      final nearbyStops = await _getNearbyBusStopsUseCase(
-        startPointLatLng.latitude,
-        startPointLatLng.longitude,
-        radiusInMeters: 3000,
-        limit: 5,
-        offset: 0,
-      );
-      BusStop? userNearestStop;
-      if (nearbyStops.isNotEmpty) {
-        const Distance distance = Distance();
-        nearbyStops.sort((a, b) {
-          final dA = distance(
-            startPointLatLng,
-            LatLng(a.latitude, a.longitude),
-          );
-          final dB = distance(
-            startPointLatLng,
-            LatLng(b.latitude, b.longitude),
-          );
-          return dA.compareTo(dB);
-        });
-        userNearestStop = nearbyStops.first;
-      } else {
-        userNearestStop = null;
-      }
-
-      if (userNearestStop == null) {
-        emit(state.copyWith(isLoading: false, suggestedBusRoutes: []));
-        return;
-      }
-
-      // 2. Lấy tất cả tuyến buýt
-      final allRoutes = await _getAllBusRoutesUseCase();
-
-      BusRoute? bestRoute;
-      BusStop? bestStartStop;
-      BusStop? bestEndStop;
-      double minEndDist = double.infinity;
-
-      // 3. Chỉ lấy các tuyến có chứa trạm gần user nhất
-      for (final route in allRoutes) {
-        // Lấy danh sách các trạm của tuyến này bằng usecase
-        final routeStops = await _getRouteStopsAsBusStopsUseCase(
-          route.id,
-          0,
-        ); // direction = 0 (hoặc tuỳ logic)
-        final startIdx = routeStops.indexWhere(
-          (stop) => stop.id == userNearestStop?.id,
+      for (int i = 0; i < maxSegments; i++) {
+        // 1. Lấy nhiều trạm gần điểm bắt đầu (điểm đã chọn hoặc vị trí hiện tại)
+        final nearbyStops = await _getNearbyBusStopsUseCase(
+          currentStartPoint.latitude,
+          currentStartPoint.longitude,
+          radiusInMeters: 3000,
+          limit: 5,
+          offset: 0,
         );
-        if (startIdx == -1) continue;
+        BusStop? userNearestStop;
+        if (nearbyStops.isNotEmpty) {
+          const Distance distance = Distance();
+          nearbyStops.sort((a, b) {
+            final dA = distance(
+              currentStartPoint,
+              LatLng(a.latitude, a.longitude),
+            );
+            final dB = distance(
+              currentStartPoint,
+              LatLng(b.latitude, b.longitude),
+            );
+            return dA.compareTo(dB);
+          });
+          userNearestStop = nearbyStops.first;
+        } else {
+          userNearestStop = null;
+        }
 
-        // 4. Tìm điểm dừng trên tuyến gần điểm đích nhất (sau điểm lên)
-        BusStop? nearestEndStop;
-        double minDist = double.infinity;
-        for (int i = startIdx + 1; i < routeStops.length; i++) {
-          final stop = routeStops[i];
-          final stopLatLng = LatLng(stop.latitude, stop.longitude);
-          final d = const Distance().as(
-            LengthUnit.Meter,
-            endLatLng,
-            stopLatLng,
-          );
-          if (d < minDist) {
-            minDist = d;
-            nearestEndStop = stop;
+        if (userNearestStop == null) {
+          break; // No more routes can be found
+        }
+
+        // 2. Lấy tất cả tuyến buýt
+        final allRoutes = await _getAllBusRoutesUseCase();
+
+        BusRoute? bestRoute;
+        BusStop? bestStartStop;
+        BusStop? bestEndStop;
+        int bestDirection = 0;
+        double minEndDist = double.infinity;
+
+        // 3. Chỉ lấy các tuyến có chứa trạm gần user nhất
+        for (final route in allRoutes) {
+          for (final direction in [0, 1]) {
+            // Lấy danh sách các trạm của tuyến này bằng usecase
+            final routeStops = await _getRouteStopsAsBusStopsUseCase(
+              route.id,
+              direction,
+            );
+            if (routeStops.isEmpty) continue;
+
+            final startIdx = routeStops.indexWhere(
+              (stop) => stop.id == userNearestStop?.id,
+            );
+            if (startIdx == -1) continue;
+
+            // 4. Tìm điểm dừng trên tuyến gần điểm đích nhất (sau điểm lên)
+            BusStop? nearestEndStop;
+            double minDist = double.infinity;
+            for (int j = startIdx + 1; j < routeStops.length; j++) {
+              final stop = routeStops[j];
+              final stopLatLng = LatLng(stop.latitude, stop.longitude);
+              final d = const Distance().as(
+                LengthUnit.Meter,
+                endLatLng,
+                stopLatLng,
+              );
+              if (d < minDist) {
+                minDist = d;
+                nearestEndStop = stop;
+              }
+            }
+            if (nearestEndStop == null) continue;
+
+            if (minDist < minEndDist) {
+              minEndDist = minDist;
+              bestRoute = route;
+              bestStartStop = routeStops[startIdx];
+              bestEndStop = nearestEndStop;
+              bestDirection = direction;
+            }
           }
         }
-        if (nearestEndStop == null) continue;
 
-        if (minDist < minEndDist) {
-          minEndDist = minDist;
-          bestRoute = route;
-          bestStartStop = routeStops[startIdx];
-          bestEndStop = nearestEndStop;
+        if (bestRoute != null && bestStartStop != null && bestEndStop != null) {
+          final hasActiveBus = await _hasActiveBusOnRoute(bestRoute.id);
+          isBusActive = isBusActive || hasActiveBus;
+
+          if (hasActiveBus) {
+            journeySegments.add({
+              'route': bestRoute,
+              'startStop': bestStartStop,
+              'endStop': bestEndStop,
+              'startPoint': currentStartPoint,
+              'direction': bestDirection,
+            });
+            currentStartPoint = LatLng(
+              bestEndStop.latitude,
+              bestEndStop.longitude,
+            );
+
+            // If this segment's end stop is close enough to the final destination, stop searching.
+            final distanceToEnd = const Distance().as(
+              LengthUnit.Meter,
+              currentStartPoint,
+              endLatLng,
+            );
+            if (distanceToEnd < 1000) {
+              // 1km threshold
+              break;
+            }
+          } else {
+            break; // If a segment has no active bus, the journey is not viable.
+          }
+        } else {
+          break; // No more routes found
         }
       }
 
-      if (bestRoute != null && bestStartStop != null && bestEndStop != null) {
-        final hasActiveBus = await _hasActiveBusOnRoute(bestRoute.id);
-        isBusActive = hasActiveBus;
-        if (hasActiveBus) {
+      if (journeySegments.isNotEmpty) {
+        // Common calculations for both single and multi-segment
+        List<Map<String, dynamic>> segmentDetails = [];
+        double totalWalkingDistance = 0;
+        double totalBusDistance = 0;
+        double totalTime = 0;
+
+        for (int i = 0; i < journeySegments.length; i++) {
+          final segment = journeySegments[i];
+          final route = segment['route'] as BusRoute;
+          final startStop = segment['startStop'] as BusStop;
+          final endStop = segment['endStop'] as BusStop;
+          final segmentStartPoint = segment['startPoint'] as LatLng;
+
           final walkingDistanceMeters = const Distance().as(
             LengthUnit.Meter,
-            startPointLatLng,
-            LatLng(bestStartStop.latitude, bestStartStop.longitude),
+            segmentStartPoint,
+            LatLng(startStop.latitude, startStop.longitude),
           );
           final busDistanceMeters = const Distance().as(
             LengthUnit.Meter,
-            LatLng(bestStartStop.latitude, bestStartStop.longitude),
-            LatLng(bestEndStop.latitude, bestEndStop.longitude),
+            LatLng(startStop.latitude, startStop.longitude),
+            LatLng(endStop.latitude, endStop.longitude),
           );
 
-          // Tính khoảng cách đi bộ từ điểm xuống xe đến đích (giả định 400m nếu không có dữ liệu)
-          final endWalkingDistanceMeters =
-              state.endLatLng != null
-                  ? const Distance().as(
-                    LengthUnit.Meter,
-                    LatLng(bestEndStop.latitude, bestEndStop.longitude),
-                    state.endLatLng!,
-                  )
-                  : 400.0; // Giả định 400m
+          totalWalkingDistance += walkingDistanceMeters;
+          totalBusDistance += busDistanceMeters;
 
-          final walkingDistanceStr =
-              walkingDistanceMeters < 1000
-                  ? '${walkingDistanceMeters.round()} m'
-                  : '${(walkingDistanceMeters / 1000).toStringAsFixed(2)} km';
-          final busDistanceStr =
-              busDistanceMeters < 1000
-                  ? '${busDistanceMeters.round()} m'
-                  : '${(busDistanceMeters / 1000).toStringAsFixed(2)} km';
-          final endWalkingDistanceStr =
-              endWalkingDistanceMeters < 1000
-                  ? '${endWalkingDistanceMeters.round()} m'
-                  : '${(endWalkingDistanceMeters / 1000).toStringAsFixed(2)} km';
-
-          // Tính thời gian di chuyển cho mỗi chặng
-          final walkingTimeStr = _calculateWalkingTime(walkingDistanceMeters);
-          final busTimeStr = _calculateBusTime(busDistanceMeters);
-          final endWalkingTimeStr = _calculateEndWalkingTime(
-            endWalkingDistanceMeters,
-          );
-
-          // Tính tổng thời gian (dựa trên thời gian đi bộ và xe buýt)
           final walkingTimeMin = (walkingDistanceMeters / 1000) / 5 * 60;
           final busTimeMin = (busDistanceMeters / 1000) / 25 * 60;
-          final endWalkingTimeMin = (endWalkingDistanceMeters / 1000) / 5 * 60;
-          final totalTimeMin = walkingTimeMin + busTimeMin + endWalkingTimeMin;
+          totalTime += walkingTimeMin + busTimeMin;
 
-          String totalTimeStr;
-          if (totalTimeMin < 60) {
-            totalTimeStr = '${totalTimeMin.round()} phút';
-          } else {
-            final hours = totalTimeMin ~/ 60;
-            final minutes = totalTimeMin % 60;
-            totalTimeStr =
-                minutes > 0
-                    ? '$hours giờ ${minutes.round()} phút'
-                    : '$hours giờ';
-          }
+          segmentDetails.add({
+            'routeId': route.id,
+            'direction': segment['direction'],
+            'routeNumber': route.routeNumber,
+            'routeName': route.routeName,
+            'startStopName': startStop.name,
+            'startStopId': startStop.id,
+            'endStopName': endStop.name,
+            'endStopId': endStop.id,
+            'walkingDistance':
+                walkingDistanceMeters < 1000
+                    ? '${walkingDistanceMeters.round()} m'
+                    : '${(walkingDistanceMeters / 1000).toStringAsFixed(2)} km',
+            'busDistance':
+                busDistanceMeters < 1000
+                    ? '${busDistanceMeters.round()} m'
+                    : '${(busDistanceMeters / 1000).toStringAsFixed(2)} km',
+            'walkingTime': _calculateWalkingTime(walkingDistanceMeters),
+            'busTime': _calculateBusTime(busDistanceMeters),
+            'fare': route.fareInfo,
+          });
+        }
 
-          final demoRoute = BusRoute(
-            id: bestRoute.id,
-            routeNumber: bestRoute.routeNumber,
-            routeName: bestRoute.routeName,
-            description: bestRoute.description,
-            operatingHoursDescription: bestRoute.operatingHoursDescription,
-            frequencyDescription: bestRoute.frequencyDescription,
-            fareInfo: bestRoute.fareInfo,
-            routeType: bestRoute.routeType,
-            agencyId: bestRoute.agencyId,
-            createdAt: bestRoute.createdAt,
-            updatedAt: bestRoute.updatedAt,
+        final lastSegmentEndStop = journeySegments.last['endStop'] as BusStop;
+        final endWalkingDistanceMeters = const Distance().as(
+          LengthUnit.Meter,
+          LatLng(lastSegmentEndStop.latitude, lastSegmentEndStop.longitude),
+          endLatLng,
+        );
+        totalWalkingDistance += endWalkingDistanceMeters;
+        final endWalkingTimeMin = (endWalkingDistanceMeters / 1000) / 5 * 60;
+        totalTime += endWalkingTimeMin;
+
+        String totalTimeStr;
+        if (totalTime < 60) {
+          totalTimeStr = '${totalTime.round()} phút';
+        } else {
+          final hours = totalTime ~/ 60;
+          final minutes = totalTime % 60;
+          totalTimeStr =
+              minutes > 0 ? '$hours giờ ${minutes.round()} phút' : '$hours giờ';
+        }
+
+        final firstSegment = journeySegments.first;
+        final startStopName = (firstSegment['startStop'] as BusStop).name;
+        final endStopName = (lastSegmentEndStop).name;
+
+        final commonExtra = {
+          'totalTime': totalTimeStr,
+          'startStopName': startStopName,
+          'endStopName': endStopName,
+          'walkingDistance':
+              totalWalkingDistance < 1000
+                  ? '${totalWalkingDistance.round()} m'
+                  : '${(totalWalkingDistance / 1000).toStringAsFixed(2)} km',
+          'busDistance':
+              totalBusDistance < 1000
+                  ? '${totalBusDistance.round()} m'
+                  : '${(totalBusDistance / 1000).toStringAsFixed(2)} km',
+          'endWalkingDistance':
+              endWalkingDistanceMeters < 1000
+                  ? '${endWalkingDistanceMeters.round()} m'
+                  : '${(endWalkingDistanceMeters / 1000).toStringAsFixed(2)} km',
+          'endWalkingTime': _calculateEndWalkingTime(endWalkingDistanceMeters),
+        };
+
+        if (journeySegments.length > 1) {
+          // Multi-segment journey
+          final representativeRoute = firstSegment['route'] as BusRoute;
+          final journeyRoute = BusRoute(
+            id: representativeRoute.id,
+            routeNumber: journeySegments
+                .map((s) => (s['route'] as BusRoute).routeNumber)
+                .join(' -> '),
+            routeName: 'Hành trình gồm ${journeySegments.length} chặng',
+            description: 'Chi tiết trong phần hướng dẫn',
+            operatingHoursDescription:
+                representativeRoute.operatingHoursDescription,
+            frequencyDescription: representativeRoute.frequencyDescription,
+            fareInfo: representativeRoute.fareInfo,
+            routeType: representativeRoute.routeType,
+            agencyId: representativeRoute.agencyId,
+            createdAt: representativeRoute.createdAt,
+            updatedAt: representativeRoute.updatedAt,
             stops: [],
             extra: {
-              'walkingDistance': walkingDistanceStr,
-              'busDistance': busDistanceStr,
-              'endWalkingDistance': endWalkingDistanceStr,
-              'totalTime': totalTimeStr,
-              'walkingTime': walkingTimeStr,
-              'busTime': busTimeStr,
-              'endWalkingTime': endWalkingTimeStr,
-              'startStopName': bestStartStop.name,
-              'endStopName': bestEndStop.name,
+              ...commonExtra,
+              'segments': segmentDetails,
+              'isMultiSegment': true,
             },
           );
-          routes = [demoRoute];
+          routes = [journeyRoute];
         } else {
-          routes = [];
+          // Single-segment journey
+          final segment = journeySegments.first;
+          final route = segment['route'] as BusRoute;
+          final initialWalkingDistance =
+              totalWalkingDistance - endWalkingDistanceMeters;
+
+          final singleRoute = BusRoute(
+            id: route.id,
+            routeNumber: route.routeNumber,
+            routeName: route.routeName,
+            description: route.description,
+            operatingHoursDescription: route.operatingHoursDescription,
+            frequencyDescription: route.frequencyDescription,
+            fareInfo: route.fareInfo,
+            routeType: route.routeType,
+            agencyId: route.agencyId,
+            createdAt: route.createdAt,
+            updatedAt: route.updatedAt,
+            stops: [],
+            extra: {
+              ...commonExtra,
+              'walkingTime': _calculateWalkingTime(initialWalkingDistance),
+              'busTime': _calculateBusTime(totalBusDistance),
+              'isMultiSegment': false,
+            },
+          );
+          routes = [singleRoute];
         }
+      } else {
+        routes = [];
       }
     }
 
@@ -333,6 +439,7 @@ class RouteSuggestionCubit extends Cubit<RouteSuggestionState> {
     String? startName,
     LatLng? endLatLng,
     String? endName,
+    int? maxRoutes,
   }) {
     emit(
       state.copyWith(
@@ -343,14 +450,18 @@ class RouteSuggestionCubit extends Cubit<RouteSuggestionState> {
         isLoading: true,
         suggestedBusRoutes: [],
         distanceInKm: null,
+        maxRoutes: maxRoutes,
       ),
     );
     _initializeSuggestions();
   }
 
-  Future<List<BusStop>> getRouteStops(String routeId) async {
+  Future<List<BusStop>> getRouteStops(
+    String routeId, [
+    int direction = 0,
+  ]) async {
     try {
-      return await _getRouteStopsAsBusStopsUseCase(routeId, 0);
+      return await _getRouteStopsAsBusStopsUseCase(routeId, direction);
     } catch (_) {
       return [];
     }

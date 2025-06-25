@@ -14,7 +14,8 @@ import '../../../data/model/bus_route.dart';
 import '../../../gen/assets.gen.dart';
 
 class RouteSuggestionScreen extends StatelessWidget {
-  const RouteSuggestionScreen({super.key});
+  final int? maxRoutes;
+  const RouteSuggestionScreen({super.key, this.maxRoutes});
 
   @override
   Widget build(BuildContext context) {
@@ -27,6 +28,7 @@ class RouteSuggestionScreen extends StatelessWidget {
         startName: routeFinderState.startName,
         endLatLng: routeFinderState.endLatLng,
         endName: routeFinderState.endName,
+        maxRoutes: maxRoutes,
       );
     });
 
@@ -49,6 +51,7 @@ class RouteSuggestionScreen extends StatelessWidget {
                 startName: routeFinderState.startName,
                 endLatLng: routeFinderState.endLatLng,
                 endName: routeFinderState.endName,
+                maxRoutes: maxRoutes,
               );
             },
           ),
@@ -242,32 +245,66 @@ class _RouteSuggestionView extends StatelessWidget {
 
     return GestureDetector(
       onTap: () async {
-        // Lấy danh sách các trạm của tuyến (nếu cần)
         final cubit = BlocProvider.of<RouteSuggestionCubit>(context);
-        final stops = await cubit.getRouteStops(route.id);
-        // Tìm startStop và endStop, đảm bảo trả về BusStop (không phải BusStop?)
-        final startStop = stops.firstWhere((s) => s.name == startStopName);
-        final endStop = stops.firstWhere((s) => s.name == endStopName);
-
-        // Lấy vị trí đầu và cuối từ state
-        final suggestionState =
-            BlocProvider.of<RouteSuggestionCubit>(context).state;
+        final suggestionState = cubit.state;
         final startLatLng = suggestionState.startLatLng;
         final endLatLng = suggestionState.endLatLng;
+        final isMultiSegment = route.extra?['isMultiSegment'] ?? false;
 
-        // Lấy danh sách các trạm đi qua từ startStop đến endStop (bao gồm cả hai)
-        final startIdx = stops.indexWhere((s) => s.id == startStop.id);
-        final endIdx = stops.indexWhere((s) => s.id == endStop.id);
         List<Map<String, dynamic>> stopsPassingBy = [];
-        if (startIdx != -1 && endIdx != -1 && startIdx <= endIdx) {
-          for (int i = startIdx; i <= endIdx; i++) {
-            final s = stops[i];
-            stopsPassingBy.add({
-              'name': s.name,
-              'latitude': s.latitude,
-              'longitude': s.longitude,
-              'isBusStop': true,
-            });
+
+        if (isMultiSegment) {
+          final segments = (route.extra?['segments'] as List<dynamic>?) ?? [];
+          for (final segment in segments) {
+            final routeId = segment['routeId'];
+            final direction = segment['direction'] ?? 0;
+            final segmentStartStopId = segment['startStopId'];
+            final segmentEndStopId = segment['endStopId'];
+            final stops = await cubit.getRouteStops(routeId, direction);
+            final startIdx = stops.indexWhere(
+              (s) => s.id == segmentStartStopId,
+            );
+            final endIdx = stops.indexWhere((s) => s.id == segmentEndStopId);
+
+            if (startIdx != -1 && endIdx != -1 && startIdx <= endIdx) {
+              for (int i = startIdx; i <= endIdx; i++) {
+                final s = stops[i];
+                if (!stopsPassingBy.any((stop) => stop['id'] == s.id)) {
+                  stopsPassingBy.add({
+                    'id': s.id,
+                    'name': s.name,
+                    'latitude': s.latitude,
+                    'longitude': s.longitude,
+                    'isBusStop': true,
+                  });
+                }
+              }
+            }
+          }
+        } else {
+          // Original logic for single route
+          final stops = await cubit.getRouteStops(route.id);
+          final startStop = stops.firstWhere(
+            (s) => s.name == startStopName,
+            orElse: () => stops.first,
+          );
+          final endStop = stops.firstWhere(
+            (s) => s.name == endStopName,
+            orElse: () => stops.last,
+          );
+          final startIdx = stops.indexWhere((s) => s.id == startStop.id);
+          final endIdx = stops.indexWhere((s) => s.id == endStop.id);
+          if (startIdx != -1 && endIdx != -1 && startIdx <= endIdx) {
+            for (int i = startIdx; i <= endIdx; i++) {
+              final s = stops[i];
+              stopsPassingBy.add({
+                'id': s.id,
+                'name': s.name,
+                'latitude': s.latitude,
+                'longitude': s.longitude,
+                'isBusStop': true,
+              });
+            }
           }
         }
 
@@ -275,12 +312,6 @@ class _RouteSuggestionView extends StatelessWidget {
           AppRoutes.routeSuggestionDetail,
           extra: {
             'route': route,
-            'startStop': startStop,
-            'endStop': endStop,
-            'walkingDistance': walkingDistance,
-            'busDistance': busDistance,
-            'fare': fare,
-            'totalTime': totalTime,
             'stopsPassingBy': stopsPassingBy,
             'startName': suggestionState.startName,
             'endName': suggestionState.endName,

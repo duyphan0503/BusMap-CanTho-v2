@@ -302,7 +302,12 @@ class _RouteFinderViewState extends State<_RouteFinderView> {
             onPressed:
                 canFindRoute
                     ? () {
-                      context.push(AppRoutes.routeSuggestion);
+                      context.push(
+                        AppRoutes.routeSuggestion,
+                        extra: {
+                          'maxRoutes': _maxRoutes,
+                        }, // Pass maxRoutes parameter
+                      );
                     }
                     : null,
             style: ElevatedButton.styleFrom(

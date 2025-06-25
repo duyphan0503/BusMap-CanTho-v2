@@ -12,6 +12,7 @@ class RouteSuggestionState extends Equatable {
   final bool isLoading;
   final String? errorMessage;
   final bool isBusActive;
+  final int maxRoutes;
 
   const RouteSuggestionState({
     this.startLatLng,
@@ -23,6 +24,7 @@ class RouteSuggestionState extends Equatable {
     this.isLoading = false,
     this.errorMessage,
     this.isBusActive = false,
+    this.maxRoutes = 1,
   });
 
   RouteSuggestionState copyWith({
@@ -37,6 +39,7 @@ class RouteSuggestionState extends Equatable {
     String? errorMessage,
     bool clearErrorMessage = false,
     bool? isBusActive,
+    int? maxRoutes,
   }) {
     return RouteSuggestionState(
       startLatLng: startLatLng ?? this.startLatLng,
@@ -49,6 +52,7 @@ class RouteSuggestionState extends Equatable {
       errorMessage:
           clearErrorMessage ? null : errorMessage ?? this.errorMessage,
       isBusActive: isBusActive ?? this.isBusActive,
+      maxRoutes: maxRoutes ?? this.maxRoutes,
     );
   }
 
@@ -63,5 +67,6 @@ class RouteSuggestionState extends Equatable {
     isLoading,
     errorMessage,
     isBusActive,
+    maxRoutes,
   ];
 }

@@ -6,6 +6,7 @@ import 'package:busmapcantho/data/model/bus_stop.dart';
 import 'package:busmapcantho/gen/assets.gen.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart' as osm;
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_map_animations/flutter_map_animations.dart';
 import 'package:flutter_map_location_marker/flutter_map_location_marker.dart';
@@ -179,7 +180,7 @@ class _BusMapWidgetState extends State<BusMapWidget>
     }
 
     if (widget.routeScreenMapController != oldWidget.routeScreenMapController) {
-      _updateRouteScreenMapController(); // Added
+      _updateRouteScreenMapController();
     }
 
     if (widget.highlightedStep != null &&
@@ -201,6 +202,14 @@ class _BusMapWidgetState extends State<BusMapWidget>
                 ? 16.0
                 : _mapCtrl.mapController.camera.zoom,
       );
+    }
+
+    // Fit the map to show the entire route when start or end points change
+    if ((widget.startLocation != oldWidget.startLocation ||
+            widget.endLocation != oldWidget.endLocation ||
+            widget.routePoints != oldWidget.routePoints) &&
+        _mapReady) {
+      _fitRouteInView();
     }
   }
 
@@ -231,7 +240,81 @@ class _BusMapWidgetState extends State<BusMapWidget>
           );
         }
       };
+
+      // Add implementation for fitToBounds callback to center on a specific point
+      widget.routeScreenMapController!.fitToBounds = (osm.LatLngBounds bounds) {
+        if (mounted) {
+          // Calculate center point of the bounds
+          final centerLat = (bounds.north + bounds.south) / 2;
+          final centerLng = (bounds.east + bounds.west) / 2;
+
+          // Animate to center point
+          _mapCtrl.animateTo(
+            dest: osm.LatLng(centerLat, centerLng),
+            zoom:
+                16.0, // Set a fixed zoom level that works well for bus tracking
+          );
+        }
+      };
     }
+  }
+
+  // Method to fit the map view to show the entire route
+  void _fitRouteInView() {
+    // Check if we have enough points to create bounds
+    if (!mounted) return;
+
+    List<osm.LatLng> pointsToInclude = [];
+
+    // Add route points if available
+    if (widget.routePoints.isNotEmpty) {
+      pointsToInclude.addAll(widget.routePoints);
+    }
+    // Otherwise just use start and end points if both are available
+    else if (widget.startLocation != null && widget.endLocation != null) {
+      pointsToInclude.add(widget.startLocation!);
+      pointsToInclude.add(widget.endLocation!);
+    }
+    // If we only have one point (either start or end), add it
+    else if (widget.startLocation != null) {
+      pointsToInclude.add(widget.startLocation!);
+    } else if (widget.endLocation != null) {
+      pointsToInclude.add(widget.endLocation!);
+    } else {
+      // No points to fit to
+      return;
+    }
+
+    // Need at least one point to create bounds
+    if (pointsToInclude.isEmpty) return;
+
+    // Create bounds that include all points
+    osm.LatLngBounds bounds = osm.LatLngBounds(
+      pointsToInclude.first,
+      pointsToInclude.first,
+    );
+    for (final point in pointsToInclude) {
+      bounds.extend(point);
+    }
+
+    // Add padding around the bounds (20% of height/width)
+    final centerLat = (bounds.north + bounds.south) / 2;
+    final centerLng = (bounds.east + bounds.west) / 2;
+    final latSpan = (bounds.north - bounds.south) * 1.2;
+    final lngSpan = (bounds.east - bounds.west) * 1.2;
+
+    final paddedBounds = osm.LatLngBounds(
+      osm.LatLng(centerLat - latSpan / 2, centerLng - lngSpan / 2),
+      osm.LatLng(centerLat + latSpan / 2, centerLng + lngSpan / 2),
+    );
+
+    // Use AnimatedMapController to fit the map to these bounds
+    _mapCtrl.animatedFitCamera(
+      cameraFit: CameraFit.bounds(
+        bounds: paddedBounds,
+        padding: const EdgeInsets.all(48),
+      ),
+    );
   }
 
   @override

@@ -42,6 +42,7 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
   int _selectedTabIndex = 1;
   bool _expanded = true;
   bool _isTripModeActive = false;
+  BusLocation? _trackedBus; // Track the currently followed bus
 
   List<BusStop> _stops = [];
   List<BusStop> _outboundStops = [];
@@ -51,7 +52,19 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
   bool _notifyApproach = false;
   bool _notifyArrival = false;
   bool _notifyDeparture = false;
-  final Map<String, String> _busStatuses = {};
+  final Map<String, String> _busStatuses = {}; // Status for selected stop
+
+  // Track bus status for each stop (busId -> stopId -> status)
+  final Map<String, Map<String, String>> _busStopStatuses = {};
+
+  // Track if a bus is currently stopped at a location
+  final Map<String, bool> _busStoppedStatus = {};
+
+  // Track previous distances between buses and stops to determine direction
+  final Map<String, Map<String, double>> _previousBusStopDistances = {};
+
+  // Timestamps for when bus status changed for rate limiting
+  final Map<String, Map<String, DateTime>> _lastNotificationTime = {};
 
   final ScrollController _stopsScrollController = ScrollController();
 
@@ -286,83 +299,166 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
   }
 
   void _handleBusLocationUpdate(BusLocationState state) {
-    if (_selectedStop == null) return;
+    // Don't process if there are no stops loaded
+    if (_stops.isEmpty) return;
 
     final busLocations = state.busLocations.values.toList();
     final distCalc = Distance();
 
-    for (final bus in busLocations) {
-      final dist = distCalc.as(
-        LengthUnit.Meter,
-        osm.LatLng(bus.lat, bus.lng),
-        osm.LatLng(_selectedStop!.latitude, _selectedStop!.longitude),
-      );
+    // Check if we have any active buses for the current direction
+    final String directionSuffix = _isOutbound ? '_outbound' : '_inbound';
+    final activeBuses =
+        busLocations
+            .where((bus) => bus.vehicleId.endsWith(directionSuffix))
+            .toList();
 
-      final prevStatus = _busStatuses[bus.vehicleId] ?? 'away';
-      String newStatus = prevStatus;
-      String notificationMessage = '';
-      String? notificationTitle;
-      String? status; // Trạng thái cho NotificationLocalService
+    // If tracking is enabled, center on the tracked bus or select a new one
+    if (_isTripModeActive && activeBuses.isNotEmpty) {
+      // If we don't have a tracked bus yet or it's no longer available, select the first active bus
+      if (_trackedBus == null ||
+          !activeBuses.any((bus) => bus.vehicleId == _trackedBus!.vehicleId)) {
+        _trackedBus = activeBuses.first;
+      } else {
+        // Update our tracked bus with the latest location
+        _trackedBus = activeBuses.firstWhere(
+          (bus) => bus.vehicleId == _trackedBus!.vehicleId,
+          orElse: () => activeBuses.first,
+        );
+      }
 
-      // Thiết lập các ngưỡng khoảng cách để xác định trạng thái xe buýt
-      const double approachingThreshold =
-          500; // Xe đang đến gần khi cách trạm 500m
-      const double arrivedThreshold =
-          100; // Xe đã đến nơi khi cách trạm dưới 100m
-      const double departedThreshold =
-          200; // Xe đã rời đi khi đã từng ở trạng thái arrived và cách trạm trên 200m
+      // Center map on the tracked bus
+      _centerOnBus(_trackedBus!);
+    }
 
-      // Logic cải tiến để xác định trạng thái xe buýt chính xác hơn
-      if (dist <= arrivedThreshold && prevStatus != 'arrived') {
-        // Chuyển từ approaching hoặc away sang arrived
-        newStatus = 'arrived';
-        if (_notifyArrival) {
-          status = 'arrived';
-          notificationTitle = 'route.busArrivedAtStopTitle'.tr();
-          notificationMessage = 'route.busArrivedAtStop'.tr(
-            args: [bus.vehicleId, _selectedStop!.name],
-          );
+    // Process each active bus
+    for (final bus in activeBuses) {
+      final busId = bus.vehicleId;
+
+      // Initialize bus data structures if they don't exist yet
+      _busStopStatuses.putIfAbsent(busId, () => {});
+      _lastNotificationTime.putIfAbsent(busId, () => {});
+
+      // Determine if bus is stopped based on speed
+      // Typically consider a bus stopped if speed is less than 2 km/h
+      final bool isBusStopped = bus.speed < 2.0;
+      final bool wasBusStopped = _busStoppedStatus[busId] ?? false;
+
+      // Process all stops for the current direction
+      for (final stop in _stops) {
+        final stopId = stop.id;
+
+        // Calculate distance between bus and stop
+        final dist = distCalc.as(
+          LengthUnit.Meter,
+          osm.LatLng(bus.lat, bus.lng),
+          osm.LatLng(stop.latitude, stop.longitude),
+        );
+
+        // Initialize previous distance tracking if not exists
+        _previousBusStopDistances.putIfAbsent(busId, () => {});
+
+        // Check if the bus is approaching or moving away from the stop
+        final prevDist = _previousBusStopDistances[busId]?[stopId];
+        final isApproaching = prevDist != null ? dist < prevDist : null;
+
+        // Save current distance for next comparison
+        _previousBusStopDistances[busId]![stopId] = dist;
+
+        // Thresholds for notifications
+        const double approachingThreshold = 500; // 500m away from stop
+
+        // Get previous status for this bus at this stop
+        final prevStatus = _busStopStatuses[busId]?[stopId] ?? 'away';
+        String newStatus = prevStatus;
+
+        // Initialize notification variables
+        String notificationMessage = '';
+        String? notificationTitle;
+        String? status;
+
+        // Determine new status based on bus's stopped state and movement
+        if (dist <= approachingThreshold &&
+            isApproaching == true &&
+            prevStatus == 'away') {
+          // Bus is approaching the stop and is within notification threshold
+          newStatus = 'approaching';
+          if (_notifyApproach) {
+            status = 'approaching';
+            notificationTitle = 'Thông báo xe gần đến trạm';
+            notificationMessage =
+                'Xe buýt còn ${dist.toInt()}m nữa sẽ đến trạm ${stop.name}';
+          }
+        } else if (dist <= 50 && // Use smaller radius for arrival detection
+            isBusStopped &&
+            !wasBusStopped && // Key transition: bus was moving and now stopped
+            prevStatus != 'arrived') {
+          // Bus has just stopped at the station - this is an arrival event
+          newStatus = 'arrived';
+          if (_notifyArrival) {
+            status = 'arrived';
+            notificationTitle = 'Thông báo xe đến trạm';
+            notificationMessage = 'Xe buýt đã đến trạm ${stop.name}';
+          }
+        } else if (dist <= 50 &&
+            !isBusStopped &&
+            wasBusStopped && // Key transition: bus was stopped and now moving
+            prevStatus == 'arrived') {
+          // Bus was at the station and has just started moving - this is a departure event
+          newStatus = 'departed';
+          if (_notifyDeparture) {
+            status = 'departed';
+            notificationTitle = 'Thông báo xe rời trạm';
+            notificationMessage = 'Xe buýt đã khởi hành từ trạm ${stop.name}';
+          }
+        } else if ((prevStatus == 'departed' || prevStatus == 'arrived') &&
+            isApproaching == false &&
+            dist > approachingThreshold) {
+          // Bus has moved far away from the station
+          newStatus = 'away';
+        } else if (prevStatus == 'approaching' &&
+            isApproaching == false &&
+            dist > approachingThreshold) {
+          // Bus was approaching but is now moving away without arriving
+          newStatus = 'away';
         }
-      } else if (prevStatus == 'arrived' && dist > departedThreshold) {
-        // Chuyển từ arrived sang departed
-        newStatus = 'departed';
-        if (_notifyDeparture) {
-          status = 'departed';
-          notificationTitle = 'route.busDepartedStopTitle'.tr();
-          notificationMessage = 'route.busDepartedStop'.tr(
-            args: [bus.vehicleId, _selectedStop!.name],
-          );
-        }
-      } else if (dist <= approachingThreshold &&
-          dist > arrivedThreshold &&
-          prevStatus == 'away') {
-        // Chuyển từ away sang approaching
-        newStatus = 'approaching';
-        if (_notifyApproach) {
-          status = 'approaching';
-          notificationTitle = 'route.busApproachingStopTitle'.tr();
-          notificationMessage = 'route.busApproachingStop'.tr(
-            args: [bus.vehicleId, _selectedStop!.name],
-          );
+
+        // Update status if it changed
+        if (newStatus != prevStatus) {
+          _busStopStatuses[busId]![stopId] = newStatus;
+
+          // Check if we should show a notification
+          if (_isTripModeActive &&
+              status != null &&
+              notificationMessage.isNotEmpty &&
+              mounted) {
+            // Rate limiting: only allow notification if enough time has passed
+            final now = DateTime.now();
+            final lastTime = _lastNotificationTime[busId]?[stopId];
+            if (lastTime == null || now.difference(lastTime).inSeconds > 30) {
+              // Update the last notification time
+              _lastNotificationTime[busId]![stopId] = now;
+
+              // Show notification
+              final notificationService = NotificationLocalService();
+              notificationService.showBusNotification(
+                title: notificationTitle ?? 'BusMap',
+                body: notificationMessage,
+                status: status,
+                payload: '${widget.route.id}|${stop.id}|${bus.vehicleId}',
+              );
+            }
+          }
+
+          // If this is the currently selected stop, also update the simple status map
+          // (for backward compatibility with existing code)
+          if (_selectedStop != null && stop.id == _selectedStop!.id) {
+            _busStatuses[busId] = newStatus;
+          }
         }
       }
 
-      if (newStatus != prevStatus) {
-        _busStatuses[bus.vehicleId] = newStatus;
-        if (_isTripModeActive &&
-            status != null &&
-            notificationMessage.isNotEmpty &&
-            mounted) {
-          // Sử dụng NotificationLocalService để hiển thị thông báo trên thanh thông báo
-          final notificationService = NotificationLocalService();
-          notificationService.showBusNotification(
-            title: notificationTitle ?? 'BusMap',
-            body: notificationMessage,
-            status: status,
-            payload: '${widget.route.id}|${_selectedStop!.id}|${bus.vehicleId}',
-          );
-        }
-      }
+      // Update the bus stopped status for next time
+      _busStoppedStatus[busId] = isBusStopped;
     }
   }
 
@@ -466,57 +562,111 @@ class _RouteDetailMapScreenState extends State<RouteDetailMapScreen>
     );
   }
 
+  void _centerOnBus(BusLocation bus) {
+    // Center the map on the bus's current location
+    final busLatLng = osm.LatLng(bus.lat, bus.lng);
+    _mapController.fitToBounds?.call(osm.LatLngBounds(busLatLng, busLatLng));
+  }
+
   Widget _buildTopIndicator(ThemeData theme) {
+    // Check if we have any active buses for the current direction
+    final String directionSuffix = _isOutbound ? '_outbound' : '_inbound';
+    final hasActiveBuses = context
+        .read<BusLocationCubit>()
+        .state
+        .busLocations
+        .values
+        .any((bus) => bus.vehicleId.endsWith(directionSuffix));
+
     return Positioned(
       top: 10,
       left: 10,
-      child: ElevatedButton.icon(
-        icon: Icon(
-          _isTripModeActive
-              ? Icons.pause_circle_filled
-              : Icons.play_circle_filled,
-          color: Colors.white,
-          size: 18,
-        ),
-        label: Text(
-          _isTripModeActive
-              ? 'route.stopTracking'.tr()
-              : 'route.startTracking'.tr(),
-          style: theme.textTheme.bodyMedium?.copyWith(
-            color: Colors.white,
-            fontSize: 12,
-          ),
-        ),
-        style: ElevatedButton.styleFrom(
-          backgroundColor:
-              _isTripModeActive ? AppColors.error : AppColors.primaryMedium,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          elevation: 2,
-        ),
-        onPressed: () {
-          setState(() {
-            _isTripModeActive = !_isTripModeActive;
-          });
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  _isTripModeActive
-                      ? 'route.tripTrackingEnabled'.tr()
-                      : 'route.tripTrackingDisabled'.tr(),
-                ),
-                backgroundColor:
-                    _isTripModeActive
-                        ? AppColors.secondaryDark
-                        : AppColors.primaryDark,
-                duration: const Duration(seconds: 2),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          ElevatedButton.icon(
+            icon: Icon(
+              _isTripModeActive
+                  ? Icons.pause_circle_filled
+                  : Icons.play_circle_filled,
+              color: Colors.white,
+              size: 18,
+            ),
+            label: Text(
+              _isTripModeActive
+                  ? 'route.stopTracking'.tr()
+                  : 'route.startTracking'.tr(),
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: Colors.white,
+                fontSize: 12,
               ),
-            );
-          }
-        },
+            ),
+            style: ElevatedButton.styleFrom(
+              backgroundColor:
+                  !hasActiveBuses
+                      ? Colors.grey
+                      : (_isTripModeActive
+                          ? AppColors.error
+                          : AppColors.primaryMedium),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              elevation: 2,
+            ),
+            onPressed:
+                !hasActiveBuses
+                    ? null // Disable button if no buses are active
+                    : () {
+                      setState(() {
+                        _isTripModeActive = !_isTripModeActive;
+
+                        // Reset tracked bus when disabling tracking
+                        if (!_isTripModeActive) {
+                          _trackedBus = null;
+                        }
+                      });
+
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              _isTripModeActive
+                                  ? 'route.tripTrackingEnabled'.tr()
+                                  : 'route.tripTrackingDisabled'.tr(),
+                            ),
+                            backgroundColor:
+                                _isTripModeActive
+                                    ? AppColors.secondaryDark
+                                    : AppColors.primaryDark,
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+          ),
+          if (!hasActiveBuses)
+            Padding(
+              padding: const EdgeInsets.only(top: 4.0, left: 4.0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8.0,
+                  vertical: 4.0,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black54,
+                  borderRadius: BorderRadius.circular(4.0),
+                ),
+                child: Text(
+                  'Xe buýt hiện không hoạt động',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: Colors.white,
+                    fontSize: 10,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }

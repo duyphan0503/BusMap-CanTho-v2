@@ -130,7 +130,8 @@ class AppRouter {
       GoRoute(
         path: AppRoutes.routeSuggestion,
         builder: (context, state) {
-          return const RouteSuggestionScreen();
+          final extra = state.extra as Map<String, dynamic>?;
+          return RouteSuggestionScreen(maxRoutes: extra?['maxRoutes'] as int?);
         },
       ),
       GoRoute(

@@ -327,5 +327,11 @@
   "errorDeleteAllNotifications": "Không thể xóa tất cả thông báo.",
   "errorLoadingRouteStops": "Không thể tải các trạm của tuyến.",
   "errorAddRouteStop": "Không thể thêm trạm vào tuyến.",
-  "errorDeleteRouteStop": "Không thể xóa trạm khỏi tuyến."
+  "errorDeleteRouteStop": "Không thể xóa trạm khỏi tuyến.",
+  "clearAll": "Xóa tất cả",
+  "clearNotificationsTitle": "Xóa thông báo",
+  "clearNotificationsConfirm": "Bạn có chắc muốn xóa tất cả thông báo không?",
+  "clear": "Xóa",
+  "notificationsCleared": "Đã xóa tất cả thông báo.",
+  "busTitleWithIndex": "Xe buýt {}"
 }

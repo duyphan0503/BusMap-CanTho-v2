@@ -10,6 +10,7 @@ import 'package:busmapcantho/gen/assets.gen.dart';
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
+import 'package:flutter_map_tile_caching/flutter_map_tile_caching.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
 
@@ -103,7 +104,8 @@ class _RouteSuggestionStepOverlayState extends State<RouteSuggestionStepOverlay>
   // Biến lưu trữ thông tin đường đi bộ
   List<LatLng> _walkingRouteToFirstStop = [];
   List<LatLng> _walkingRouteFromLastStop = [];
-  List<LatLng> _busRoute = [];
+  List<List<LatLng>> _busRoutes = [];
+  List<List<LatLng>> _walkingRoutesBetweenSegments = [];
   bool _isLoadingRoutes = true;
 
   // Biến lưu trữ trạm đang được chọn trong timeline
@@ -114,6 +116,10 @@ class _RouteSuggestionStepOverlayState extends State<RouteSuggestionStepOverlay>
   int _currentStepIndex = 0;
   List<Map<String, dynamic>> _navigationSteps = [];
   StreamSubscription<Position>? _positionStream;
+
+  final _tileProvider = FMTCTileProvider(
+    stores: const {'mapStore': BrowseStoreStrategy.readUpdateCreate},
+  );
 
   @override
   void initState() {
@@ -134,46 +140,76 @@ class _RouteSuggestionStepOverlayState extends State<RouteSuggestionStepOverlay>
     final startPos = widget.startLatLng;
     final endPos = widget.endLatLng;
     final List<dynamic> stopsData = widget.stopsPassingBy ?? [];
+    final isMultiSegment = widget.busRoute?.extra?['isMultiSegment'] ?? false;
 
     if (stopsData.isNotEmpty && startPos != null && endPos != null) {
-      // Lấy trạm đầu tiên và cuối cùng
-      final firstBusStopLatLng = LatLng(
-        stopsData.first['latitude'],
-        stopsData.first['longitude'],
-      );
-      final lastBusStopLatLng = LatLng(
-        stopsData.last['latitude'],
-        stopsData.last['longitude'],
-      );
-
-      // Tạo đường đi bộ từ điểm xuất phát đến trạm đầu tiên
+      // Get walking route from user's location to the first bus stop
       final walkingToFirstStop = await _osrmService.getDirections(
         startPos,
-        firstBusStopLatLng,
+        LatLng(stopsData.first['latitude'], stopsData.first['longitude']),
         mode: 'walk',
       );
 
-      // Tạo đường đi bộ từ trạm cuối cùng đến điểm đích
+      // Get walking route from the last bus stop to the destination
       final walkingFromLastStop = await _osrmService.getDirections(
-        lastBusStopLatLng,
+        LatLng(stopsData.last['latitude'], stopsData.last['longitude']),
         endPos,
         mode: 'walk',
       );
 
-      // Cập nhật dữ liệu đường đi
+      final List<List<LatLng>> busRoutes = [];
+      final List<List<LatLng>> walkingBetweenSegments = [];
+
+      if (isMultiSegment) {
+        final segments = (widget.busRoute.extra['segments'] as List<dynamic>);
+        for (var i = 0; i < segments.length; i++) {
+          final segment = segments[i];
+          final startStopId = segment['startStopId'];
+          final endStopId = segment['endStopId'];
+
+          final startIdx = stopsData.indexWhere((s) => s['id'] == startStopId);
+          final endIdx = stopsData.indexWhere((s) => s['id'] == endStopId);
+
+          if (startIdx != -1 && endIdx != -1 && startIdx <= endIdx) {
+            busRoutes.add(
+              stopsData
+                  .sublist(startIdx, endIdx + 1)
+                  .map<LatLng>((s) => LatLng(s['latitude'], s['longitude']))
+                  .toList(),
+            );
+          }
+
+          // If not the last segment, find walking path to the next one
+          if (i < segments.length - 1) {
+            final nextSegment = segments[i + 1];
+            final endStop = stopsData[endIdx];
+            final nextStartStop = stopsData.firstWhere(
+              (s) => s['id'] == nextSegment['startStopId'],
+            );
+
+            final walkingRoute = await _osrmService.getDirections(
+              LatLng(endStop['latitude'], endStop['longitude']),
+              LatLng(nextStartStop['latitude'], nextStartStop['longitude']),
+              mode: 'walk',
+            );
+            walkingBetweenSegments.add(walkingRoute?.polyline ?? []);
+          }
+        }
+      } else {
+        // For single-segment routes, treat it as one bus route
+        busRoutes.add(
+          stopsData
+              .map<LatLng>((s) => LatLng(s['latitude'], s['longitude']))
+              .toList(),
+        );
+      }
+
       if (mounted) {
         setState(() {
           _walkingRouteToFirstStop = walkingToFirstStop?.polyline ?? [];
           _walkingRouteFromLastStop = walkingFromLastStop?.polyline ?? [];
-
-          // Tạo đường đi của xe buýt bằng cách kết nối các trạm
-          _busRoute =
-              stopsData
-                  .map<LatLng>(
-                    (stop) => LatLng(stop['latitude'], stop['longitude']),
-                  )
-                  .toList();
-
+          _busRoutes = busRoutes;
+          _walkingRoutesBetweenSegments = walkingBetweenSegments;
           _isLoadingRoutes = false;
         });
       }
@@ -347,15 +383,14 @@ class _RouteSuggestionStepOverlayState extends State<RouteSuggestionStepOverlay>
       );
     }
 
-    // Thêm các điểm của tuyến xe buýt
-    if (_busRoute.isNotEmpty) {
-      allRoutePoints.addAll(_busRoute);
-    } else {
-      // Tạo đường đi của xe buýt từ các trạm nếu chưa có
-      for (final stop in stopsData) {
-        if (stop['latitude'] != null && stop['longitude'] != null) {
-          allRoutePoints.add(LatLng(stop['latitude'], stop['longitude']));
-        }
+    // Thêm các điểm của tuyến xe buýt và đi bộ giữa các chặng
+    for (int i = 0; i < _busRoutes.length; i++) {
+      if (_busRoutes[i].isNotEmpty) {
+        allRoutePoints.addAll(_busRoutes[i]);
+      }
+      if (i < _walkingRoutesBetweenSegments.length &&
+          _walkingRoutesBetweenSegments[i].isNotEmpty) {
+        allRoutePoints.addAll(_walkingRoutesBetweenSegments[i]);
       }
     }
 
@@ -385,15 +420,30 @@ class _RouteSuggestionStepOverlayState extends State<RouteSuggestionStepOverlay>
       );
     }
 
-    // Thêm polyline cho đường xe buýt (giữa các trạm) với màu xanh lá và to hơn
-    if (_busRoute.isNotEmpty) {
-      routePolylines.add(
-        Polyline(
-          points: _busRoute,
-          color: AppColors.primaryLight,
-          strokeWidth: 7.0,
-        ),
-      );
+    // Thêm polylines cho các chặng xe buýt và đi bộ giữa chúng
+    for (int i = 0; i < _busRoutes.length; i++) {
+      // Bus route
+      if (_busRoutes[i].isNotEmpty) {
+        routePolylines.add(
+          Polyline(
+            points: _busRoutes[i],
+            color: AppColors.primaryLight,
+            strokeWidth: 7.0,
+          ),
+        );
+      }
+      // Walking route to next segment
+      if (i < _walkingRoutesBetweenSegments.length &&
+          _walkingRoutesBetweenSegments[i].isNotEmpty) {
+        routePolylines.add(
+          Polyline(
+            points: _walkingRoutesBetweenSegments[i],
+            color: Colors.blue,
+            strokeWidth: 4.0,
+            pattern: StrokePattern.dashed(segments: [6, 6]),
+          ),
+        );
+      }
     }
 
     // Thêm polyline cho đường đi bộ từ trạm cuối đến điểm đích
@@ -421,6 +471,12 @@ class _RouteSuggestionStepOverlayState extends State<RouteSuggestionStepOverlay>
             // Tile Layer (base map)
             TileLayer(
               urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+              tileProvider: _tileProvider,
+              subdomains: const ['a', 'b', 'c'],
+              userAgentPackageName: 'com.busmapcantho.app',
+              additionalOptions: const {
+                'attribution': '© OpenStreetMap contributors',
+              },
             ),
 
             // Polyline Layer cho tất cả các đường đi
@@ -585,52 +641,114 @@ class _RouteSuggestionStepOverlayState extends State<RouteSuggestionStepOverlay>
   }
 
   List<Map<String, dynamic>> _buildNavigationSteps() {
-    // Build steps: đi bộ đến trạm đầu, đi xe buýt, đi bộ đến đích
     final startName = StringUtils.getShortName(widget.startName);
     final endName = StringUtils.getShortName(widget.endName);
+    final isMultiSegment = widget.busRoute?.extra?['isMultiSegment'] ?? false;
     final stops = widget.stopsPassingBy ?? [];
-    final firstStop = stops.isNotEmpty ? (stops.first['name'] ?? '') : '';
-    final lastStop = stops.isNotEmpty ? (stops.last['name'] ?? '') : '';
-    final routeNumber = widget.busRoute?.routeNumber ?? '';
-    final routeName = widget.busRoute?.routeName ?? '';
-    final fare = widget.busRoute?.fareInfo ?? '';
-    final walkingDistance = widget.busRoute?.extra?['walkingDistance'] ?? '';
-    final busDistance = widget.busRoute?.extra?['busDistance'] ?? '';
-    final endWalkingDistance =
-        widget.busRoute?.extra?['endWalkingDistance'] ?? '400m';
-    final walkingTime = widget.busRoute?.extra?['walkingTime'] ?? '';
-    final busTime = widget.busRoute?.extra?['busTime'] ?? '';
-    final endWalkingTime = widget.busRoute?.extra?['endWalkingTime'] ?? '';
-    return [
-      {
+
+    if (isMultiSegment) {
+      final segments =
+          (widget.busRoute?.extra?['segments'] as List<dynamic>?) ?? [];
+      final List<Map<String, dynamic>> steps = [];
+
+      // Helper to find stop LatLng
+      LatLng? getStopLatLng(String stopName) {
+        final stopData = stops.firstWhere((s) => s['name'] == stopName);
+        return stopData != null
+            ? LatLng(stopData['latitude'], stopData['longitude'])
+            : null;
+      }
+
+      for (int i = 0; i < segments.length; i++) {
+        final segment = segments[i];
+
+        // 1. Walking part
+        steps.add({
+          'icon': Icons.directions_walk,
+          'title': 'Đi đến trạm ${segment['startStopName']}',
+          'subtitle':
+              i == 0
+                  ? 'Xuất phát từ [ $startName ]'
+                  : 'Từ trạm ${segments[i - 1]['endStopName']}',
+          'duration': segment['walkingTime'] ?? '',
+          'distance': segment['walkingDistance'] ?? '',
+          'location':
+              i == 0
+                  ? widget.startLatLng
+                  : getStopLatLng(segments[i - 1]['endStopName']),
+        });
+
+        // 2. Bus part
+        steps.add({
+          'icon': Icons.directions_bus,
+          'title':
+              'Đi tuyến ${segment['routeNumber']}: ${segment['routeName']}',
+          'subtitle': '${segment['startStopName']} → ${segment['endStopName']}',
+          'duration': segment['busTime'] ?? '',
+          'distance': segment['busDistance'] ?? '',
+          'price': segment['fare'] ?? '',
+          'location': getStopLatLng(segment['startStopName']),
+        });
+      }
+
+      // 3. Final walk
+      final lastSegmentEndStopName =
+          widget.busRoute?.extra?['endStopName'] ?? '';
+      steps.add({
         'icon': Icons.directions_walk,
-        'title': 'Đi đến trạm $firstStop',
-        'subtitle': 'Xuất phát từ [ $startName ]',
-        'duration': walkingTime,
-        'distance': walkingDistance,
-        'location': widget.startLatLng,
-      },
-      {
-        'icon': Icons.directions_bus,
-        'title': 'Đi tuyến $routeNumber: $routeName',
-        'subtitle': '$firstStop → $lastStop',
-        'duration': busTime,
-        'distance': busDistance,
-        'price': fare,
-        'location':
-            stops.isNotEmpty
-                ? LatLng(stops.first['latitude'], stops.first['longitude'])
-                : null,
-      },
-      {
-        'icon': Icons.directions_walk,
-        'title': 'Xuống tại trạm $lastStop và đi tới điểm đến',
+        'title': 'Xuống tại trạm $lastSegmentEndStopName và đi tới điểm đến',
         'subtitle': 'Đi đến [ $endName ]',
-        'duration': endWalkingTime,
-        'distance': endWalkingDistance,
-        'location': widget.endLatLng,
-      },
-    ];
+        'duration': widget.busRoute?.extra?['endWalkingTime'] ?? '',
+        'distance': widget.busRoute?.extra?['endWalkingDistance'] ?? '',
+        'location': getStopLatLng(lastSegmentEndStopName),
+      });
+
+      return steps;
+    } else {
+      // Original single-route logic
+      final firstStop = stops.isNotEmpty ? (stops.first['name'] ?? '') : '';
+      final lastStop = stops.isNotEmpty ? (stops.last['name'] ?? '') : '';
+      final routeNumber = widget.busRoute?.routeNumber ?? '';
+      final routeName = widget.busRoute?.routeName ?? '';
+      final fare = widget.busRoute?.fareInfo ?? '';
+      final walkingDistance = widget.busRoute?.extra?['walkingDistance'] ?? '';
+      final busDistance = widget.busRoute?.extra?['busDistance'] ?? '';
+      final endWalkingDistance =
+          widget.busRoute?.extra?['endWalkingDistance'] ?? '400m';
+      final walkingTime = widget.busRoute?.extra?['walkingTime'] ?? '';
+      final busTime = widget.busRoute?.extra?['busTime'] ?? '';
+      final endWalkingTime = widget.busRoute?.extra?['endWalkingTime'] ?? '';
+      return [
+        {
+          'icon': Icons.directions_walk,
+          'title': 'Đi đến trạm $firstStop',
+          'subtitle': 'Xuất phát từ [ $startName ]',
+          'duration': walkingTime,
+          'distance': walkingDistance,
+          'location': widget.startLatLng,
+        },
+        {
+          'icon': Icons.directions_bus,
+          'title': 'Đi tuyến $routeNumber: $routeName',
+          'subtitle': '$firstStop → $lastStop',
+          'duration': busTime,
+          'distance': busDistance,
+          'price': fare,
+          'location':
+              stops.isNotEmpty
+                  ? LatLng(stops.first['latitude'], stops.first['longitude'])
+                  : null,
+        },
+        {
+          'icon': Icons.directions_walk,
+          'title': 'Xuống tại trạm $lastStop và đi tới điểm đến',
+          'subtitle': 'Đi đến [ $endName ]',
+          'duration': endWalkingTime,
+          'distance': endWalkingDistance,
+          'location': widget.endLatLng,
+        },
+      ];
+    }
   }
 
   void _onUserPositionUpdate(Position pos) {
@@ -751,82 +869,163 @@ class _RouteSuggestionStepOverlayState extends State<RouteSuggestionStepOverlay>
   List<Widget> _buildStepDetailCards() {
     final startName = StringUtils.getShortName(widget.startName);
     final endName = StringUtils.getShortName(widget.endName);
-    final stops = widget.stopsPassingBy ?? [];
-    final firstStop = stops.isNotEmpty ? (stops.first['name'] ?? '') : '';
-    final lastStop = stops.isNotEmpty ? (stops.last['name'] ?? '') : '';
-    final routeNumber = widget.busRoute?.routeNumber ?? '';
-    final routeName = widget.busRoute?.routeName ?? '';
-    final fare = widget.busRoute?.fareInfo ?? '';
+    final isMultiSegment = widget.busRoute?.extra?['isMultiSegment'] ?? false;
 
-    // Lấy khoảng cách các đoạn đường
-    final walkingDistance = widget.busRoute?.extra?['walkingDistance'] ?? '';
-    final busDistance = widget.busRoute?.extra?['busDistance'] ?? '';
-    final endWalkingDistance =
-        widget.busRoute?.extra?['endWalkingDistance'] ?? '400m';
+    if (isMultiSegment) {
+      final segments =
+          (widget.busRoute?.extra?['segments'] as List<dynamic>?) ?? [];
+      final List<Widget> stepCards = [];
 
-    // Lấy thời gian các đoạn đường (đã được tính toán từ cubit)
-    final walkingTime = widget.busRoute?.extra?['walkingTime'] ?? '';
-    final busTime = widget.busRoute?.extra?['busTime'] ?? '';
-    final endWalkingTime = widget.busRoute?.extra?['endWalkingTime'] ?? '';
+      for (int i = 0; i < segments.length; i++) {
+        final segment = segments[i];
 
-    return [
-      GestureDetector(
-        onTap: () {
-          // Di chuyển map đến điểm đầu
-          if (widget.startLatLng != null) {
-            _mapController.move(widget.startLatLng!, 17.0);
-          }
-        },
-        child: _buildStepDetailCard(
+        // 1. Walking part
+        stepCards.add(
+          _buildStepDetailCard(
+            icon: Icons.directions_walk,
+            title: 'Đi đến trạm ${segment['startStopName']}',
+            subtitle:
+                i == 0
+                    ? 'Xuất phát từ [ $startName ]'
+                    : 'Từ trạm ${segments[i - 1]['endStopName']}',
+            duration: segment['walkingTime'] ?? '',
+            distance: segment['walkingDistance'] ?? '',
+          ),
+        );
+
+        // 2. Bus part
+        stepCards.add(
+          GestureDetector(
+            onTap: () {
+              if (_busRoutes.length > i && _busRoutes[i].isNotEmpty) {
+                var bounds = LatLngBounds(
+                  _busRoutes[i].first,
+                  _busRoutes[i].first,
+                );
+                for (final point in _busRoutes[i]) {
+                  bounds.extend(point);
+                }
+                _mapController.fitCamera(
+                  CameraFit.bounds(
+                    bounds: bounds,
+                    padding: const EdgeInsets.all(60),
+                  ),
+                );
+              }
+            },
+            child: _buildStepDetailCard(
+              icon: Icons.directions_bus,
+              title:
+                  'Đi tuyến ${segment['routeNumber']}: ${segment['routeName']}',
+              subtitle:
+                  '${segment['startStopName']} → ${segment['endStopName']}',
+              duration: segment['busTime'] ?? '',
+              distance: segment['busDistance'] ?? '',
+              price: segment['fare'] ?? '',
+            ),
+          ),
+        );
+      }
+
+      // 3. Final walk from the last stop to the destination
+      final lastSegmentEndStopName =
+          widget.busRoute?.extra?['endStopName'] ?? '';
+      final endWalkingDistance =
+          widget.busRoute?.extra?['endWalkingDistance'] ?? '';
+      final endWalkingTime = widget.busRoute?.extra?['endWalkingTime'] ?? '';
+      stepCards.add(
+        _buildStepDetailCard(
           icon: Icons.directions_walk,
-          title: 'Đi đến trạm $firstStop',
-          subtitle: 'Xuất phát từ [ $startName ]',
-          duration: walkingTime,
-          distance: walkingDistance,
-        ),
-      ),
-      GestureDetector(
-        onTap: () {
-          // Zoom map to fit the bus route
-          if (_busRoute.isNotEmpty) {
-            var bounds = LatLngBounds(_busRoute.first, _busRoute.first);
-            for (final point in _busRoute) {
-              bounds.extend(point);
-            }
-            // For flutter_map >= 4.0.0, use camera.fitBounds
-            _mapController.fitCamera(
-              CameraFit.bounds(
-                bounds: bounds,
-                padding: const EdgeInsets.all(60),
-              ),
-            );
-          }
-        },
-        child: _buildStepDetailCard(
-          icon: Icons.directions_bus,
-          title: 'Đi tuyến $routeNumber: $routeName',
-          subtitle: '$firstStop → $lastStop',
-          duration: busTime,
-          distance: busDistance,
-          price: fare,
-        ),
-      ),
-      GestureDetector(
-        onTap: () {
-          // Di chuyển map đến điểm cuối
-          if (widget.endLatLng != null) {
-            _mapController.move(widget.endLatLng!, 17.0);
-          }
-        },
-        child: _buildStepDetailCard(
-          icon: Icons.directions_walk,
-          title: 'Xuống tại trạm $lastStop và đi tới điểm đến',
+          title: 'Xuống tại trạm $lastSegmentEndStopName và đi tới điểm đến',
           subtitle: 'Đi đến [ $endName ]',
           duration: endWalkingTime,
           distance: endWalkingDistance,
         ),
-      ),
-    ];
+      );
+
+      return stepCards;
+    } else {
+      // Original logic for single route
+      final stops = widget.stopsPassingBy ?? [];
+      final firstStop = stops.isNotEmpty ? (stops.first['name'] ?? '') : '';
+      final lastStop = stops.isNotEmpty ? (stops.last['name'] ?? '') : '';
+      final routeNumber = widget.busRoute?.routeNumber ?? '';
+      final routeName = widget.busRoute?.routeName ?? '';
+      final fare = widget.busRoute?.fareInfo ?? '';
+
+      // Lấy khoảng cách các đoạn đường
+      final walkingDistance = widget.busRoute?.extra?['walkingDistance'] ?? '';
+      final busDistance = widget.busRoute?.extra?['busDistance'] ?? '';
+      final endWalkingDistance =
+          widget.busRoute?.extra?['endWalkingDistance'] ?? '400m';
+
+      // Lấy thời gian các đoạn đường (đã được tính toán từ cubit)
+      final walkingTime = widget.busRoute?.extra?['walkingTime'] ?? '';
+      final busTime = widget.busRoute?.extra?['busTime'] ?? '';
+      final endWalkingTime = widget.busRoute?.extra?['endWalkingTime'] ?? '';
+
+      return [
+        GestureDetector(
+          onTap: () {
+            // Di chuyển map đến điểm đầu
+            if (widget.startLatLng != null) {
+              _mapController.move(widget.startLatLng!, 17.0);
+            }
+          },
+          child: _buildStepDetailCard(
+            icon: Icons.directions_walk,
+            title: 'Đi đến trạm $firstStop',
+            subtitle: 'Xuất phát từ [ $startName ]',
+            duration: walkingTime,
+            distance: walkingDistance,
+          ),
+        ),
+        GestureDetector(
+          onTap: () {
+            // Zoom map to fit the bus route
+            if (_busRoutes.isNotEmpty && _busRoutes.first.isNotEmpty) {
+              var bounds = LatLngBounds(
+                _busRoutes.first.first,
+                _busRoutes.first.first,
+              );
+              for (final point in _busRoutes.first) {
+                bounds.extend(point);
+              }
+              // For flutter_map >= 4.0.0, use camera.fitBounds
+              _mapController.fitCamera(
+                CameraFit.bounds(
+                  bounds: bounds,
+                  padding: const EdgeInsets.all(60),
+                ),
+              );
+            }
+          },
+          child: _buildStepDetailCard(
+            icon: Icons.directions_bus,
+            title: 'Đi tuyến $routeNumber: $routeName',
+            subtitle: '$firstStop → $lastStop',
+            duration: busTime,
+            distance: busDistance,
+            price: fare,
+          ),
+        ),
+        GestureDetector(
+          onTap: () {
+            // Di chuyển map đến điểm cuối
+            if (widget.endLatLng != null) {
+              _mapController.move(widget.endLatLng!, 17.0);
+            }
+          },
+          child: _buildStepDetailCard(
+            icon: Icons.directions_walk,
+            title: 'Xuống tại trạm $lastStop và đi tới điểm đến',
+            subtitle: 'Đi đến [ $endName ]',
+            duration: endWalkingTime,
+            distance: endWalkingDistance,
+          ),
+        ),
+      ];
+    }
   }
 
   // Widget cho tab "CÁC TRẠM ĐI QUA"

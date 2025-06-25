@@ -322,5 +322,11 @@
   "errorDeleteAllNotifications": "Failed to delete all notifications.",
   "errorLoadingRouteStops": "Failed to load route stops.",
   "errorAddRouteStop": "Failed to add route stop.",
-  "errorDeleteRouteStop": "Failed to delete route stop."
+  "errorDeleteRouteStop": "Failed to delete route stop.",
+  "clearAll": "Clear all",
+  "clearNotificationsTitle": "Clear notifications",
+  "clearNotificationsConfirm": "Are you sure you want to clear all notifications?",
+  "clear": "Clear",
+  "notificationsCleared": "All notifications have been cleared.",
+  "busTitleWithIndex": "Bus {}"
 }

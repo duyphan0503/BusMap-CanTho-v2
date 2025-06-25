@@ -249,7 +249,17 @@ class _RouteList extends StatelessWidget {
       padding: const EdgeInsets.symmetric(vertical: 8),
       itemCount: routes.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (context, index) => RouteCardWidget(route: routes[index]),
+      itemBuilder:
+          (context, index) => GestureDetector(
+            onTap: () {
+              // Mở RouteDetailMapScreen khi nhấn vào tuyến
+              context.push(
+                '/route-detail/${routes[index].id}',
+                extra: routes[index],
+              );
+            },
+            child: RouteCardWidget(route: routes[index]),
+          ),
     );
   }
 }
@@ -270,7 +280,8 @@ class _BusList extends StatelessWidget {
       itemCount: buses.length,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder:
-          (context, index) => BusLocationTile(busLocation: buses[index]),
+          (context, index) =>
+              BusLocationTile(busLocation: buses[index], index: index),
     );
   }
 }
